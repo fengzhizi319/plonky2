@@ -254,11 +254,17 @@ pub trait Gate<F: RichField + Extendable<D>, const D: usize>: 'static + Send + S
 }
 
 /// A wrapper trait over a `Gate`, to allow for gate serialization.
+//定义了一个名为 AnyGate 的公共特性。它有一个泛型参数 F，要求 F 实现 RichField 和 Extendable<D> 特性，并且有一个常量参数 D
+//Gate<F, D>：表示 AnyGate 特性继承了 Gate<F, D> 特性。也就是说，任何实现 AnyGate 的类型也必须实现 Gate 特性
 pub trait AnyGate<F: RichField + Extendable<D>, const D: usize>: Gate<F, D> {
+    //定义了一个名为 as_any 的方法。这个方法返回一个对实现了 Any 特性的动态对象的引用。Any 特性允许在运行时进行类型检查和转换。
+    //Any 特性是 Rust 标准库中的一个特性，用于在运行时进行类型检查和转换。它允许将类型信息存储在运行时，并在需要时进行类型转换。Any 特性通常与动态分发和类型擦除一起使用
     fn as_any(&self) -> &dyn Any;
 }
 
+//这行代码表示为任何实现了 Gate<F, D> 特性的类型 T 实现 AnyGate<F, D> 特性。F 是一个泛型参数，要求实现 RichField 和 Extendable<D> 特性，并且有一个常量参数 D。
 impl<T: Gate<F, D>, F: RichField + Extendable<D>, const D: usize> AnyGate<F, D> for T {
+    //这是 AnyGate 特性中的方法实现。这个方法返回一个对实现了 Any 特性的动态对象的引用。
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -266,7 +272,17 @@ impl<T: Gate<F, D>, F: RichField + Extendable<D>, const D: usize> AnyGate<F, D> 
 
 /// A wrapper around an `Arc<AnyGate>` which implements `PartialEq`, `Eq` and `Hash` based on gate IDs.
 #[derive(Clone)]
+//定义了一个名为 GateRef 的元组结构体。它包含一个字段，这个字段的类型是 Arc<dyn AnyGate<F, D>>。这个字段是公共的（pub），可以在模块外部访问。
+/*在 Rust 中，元组结构体是一种特殊的结构体，它的字段没有名称，通过位置来访问。以下是定义元组结构体的语法：
+//定义一个包含两个 i32 字段的元组结构体
+    pub struct MyTupleStruct(i32, i32);
+    //你可以通过位置来访问元组结构体的字段：
+    let instance = MyTupleStruct(10, 20);
+    let first_field = instance.0; // 访问第一个字段
+    let second_field = instance.1; // 访问第二个字段
+ */
 pub struct GateRef<F: RichField + Extendable<D>, const D: usize>(pub Arc<dyn AnyGate<F, D>>);
+
 
 impl<F: RichField + Extendable<D>, const D: usize> GateRef<F, D> {
     pub fn new<G: Gate<F, D>>(gate: G) -> GateRef<F, D> {

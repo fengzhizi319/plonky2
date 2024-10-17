@@ -21,11 +21,14 @@ fn main() -> Result<()> {
     let initial_b = builder.add_virtual_target();
     let mut prev_target = initial_a;
     let mut cur_target = initial_b;
-    for _ in 0..99 {
+    for i in 0..99 {
+        println!("{}", i,);
         let temp = builder.add(prev_target, cur_target);
         prev_target = cur_target;
         cur_target = temp;
     }
+    // println!("gate_instances{:?}", builder.gate_instances);
+    //println!("copy_constraints{:?}", builder.copy_constraints);
 
     // Public inputs are the two initial values (provided below) and the result (which is generated).
     builder.register_public_input(initial_a);

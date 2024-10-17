@@ -148,18 +148,18 @@ pub struct CircuitBuilder<F: RichField + Extendable<D>, const D: usize> {
     domain_separator: Option<Vec<F>>,
 
     /// The types of gates used in this circuit.
-    gates: HashSet<GateRef<F, D>>,
+    pub gates: HashSet<GateRef<F, D>>,
 
     /// The concrete placement of each gate.
-    pub(crate) gate_instances: Vec<GateInstance<F, D>>,
+    pub gate_instances: Vec<GateInstance<F, D>>,
 
     /// Targets to be made public.
-    public_inputs: Vec<Target>,
+    pub public_inputs: Vec<Target>,
 
     /// The next available index for a `VirtualTarget`.
-    virtual_target_index: usize,
+    pub virtual_target_index: usize,
 
-    copy_constraints: Vec<CopyConstraint>,
+    pub copy_constraints: Vec<CopyConstraint>,
 
     /// A tree of named scopes, used for debugging.
     context_log: ContextTree,
@@ -240,12 +240,12 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let &CircuitConfig {
             security_bits,
             fri_config:
-                FriConfig {
-                    rate_bits,
-                    proof_of_work_bits,
-                    num_query_rounds,
-                    ..
-                },
+            FriConfig {
+                rate_bits,
+                proof_of_work_bits,
+                num_query_rounds,
+                ..
+            },
             ..
         } = &self.config;
 
@@ -918,9 +918,13 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
         // For each "regular" blinding factor, we simply add a no-op gate, and insert a random value
         // for each wire.
+        // 对于每个“常规”盲化因子，我们简单地添加一个 no-op 门，并为每个线插入一个随机值
         for _ in 0..regular_poly_openings {
+            // 添加一个 NoopGate 门，并获取其行索引
             let row = self.add_gate(NoopGate, vec![]);
+            // 遍历所有线
             for w in 0..num_wires {
+                // 为每个线添加一个随机值生成器
                 self.add_simple_generator(RandomValueGenerator {
                     target: Target::Wire(Wire { row, column: w }),
                 });
@@ -930,17 +934,23 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // For each z poly blinding factor, we add two new gates with the same random value, and
         // enforce a copy constraint between them.
         // See https://mirprotocol.org/blog/Adding-zero-knowledge-to-Plonk-Halo
+        // 对于每个 Z 多项式盲化因子，我们添加两个具有相同随机值的新门，并在它们之间强制执行复制约束
         for _ in 0..z_openings {
+            // 添加第一个 NoopGate 门，并获取其行索引
             let gate_1 = self.add_gate(NoopGate, vec![]);
+            // 添加第二个 NoopGate 门，并获取其行索引
             let gate_2 = self.add_gate(NoopGate, vec![]);
 
+            // 遍历所有路由线
             for w in 0..num_routed_wires {
+                // 为第一个门的每个线添加一个随机值生成器
                 self.add_simple_generator(RandomValueGenerator {
                     target: Target::Wire(Wire {
                         row: gate_1,
                         column: w,
                     }),
                 });
+                // 在第一个门和第二个门的相应线之间生成复制约束
                 self.generate_copy(
                     Target::Wire(Wire {
                         row: gate_1,
@@ -956,62 +966,82 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
     }
 
     fn constant_polys(&self) -> Vec<PolynomialValues<F>> {
+        // 获取所有门中常量的最大数量
         let max_constants = self
             .gates
             .iter()
             .map(|g| g.0.num_constants())
             .max()
             .unwrap();
+
+        // 转置并收集多项式值
         transpose(
             &self
                 .gate_instances
                 .iter()
                 .map(|g| {
+                    // 克隆当前门的常量
                     let mut consts = g.constants.clone();
+                    // 将常量数量调整为最大常量数量，不足的部分用 F::ZERO 填充
                     consts.resize(max_constants, F::ZERO);
                     consts
                 })
                 .collect::<Vec<_>>(),
         )
-        .into_iter()
-        .map(PolynomialValues::new)
-        .collect()
+            .into_iter()
+            // 将每个常量向量转换为 PolynomialValues
+            .map(PolynomialValues::new)
+            .collect()
     }
 
     fn sigma_vecs(&self, k_is: &[F], subgroup: &[F]) -> (Vec<PolynomialValues<F>>, Forest) {
+        // 获取门实例的数量，即电路的度数
         let degree = self.gate_instances.len();
+        // 计算度数的对数值
         let degree_log = log2_strict(degree);
+        // 获取电路配置
         let config = &self.config;
+        // 创建一个新的森林结构，用于管理电路中的目标
         let mut forest = Forest::new(
-            config.num_wires,
-            config.num_routed_wires,
-            degree,
-            self.virtual_target_index,
+            config.num_wires, // 电路中的线数量
+            config.num_routed_wires, // 电路中路由线的数量
+            degree, // 电路的度数
+            self.virtual_target_index, // 虚拟目标的索引
         );
 
+        // 遍历所有门实例
         for gate in 0..degree {
+            // 遍历每个门实例中的所有输入线
             for input in 0..config.num_wires {
+                // 将每个输入线添加到森林中
                 forest.add(Target::Wire(Wire {
-                    row: gate,
-                    column: input,
+                    row: gate, // 当前门实例的行索引
+                    column: input, // 当前输入线的列索引
                 }));
             }
         }
 
+        // 遍历所有虚拟目标
         for index in 0..self.virtual_target_index {
+            // 将每个虚拟目���添加到森林中
             forest.add(Target::VirtualTarget { index });
         }
 
+        // 遍历所有复制约束
         for &CopyConstraint { pair: (a, b), .. } in &self.copy_constraints {
+            // 合并复制约束中的两个目标
             forest.merge(a, b);
         }
 
+        // 压缩森林中的路径
         forest.compress_paths();
 
+        // 获取线分区
         let wire_partition = forest.wire_partition();
         (
+            // 获取 sigma 多项式
             wire_partition.get_sigma_polys(degree_log, k_is, subgroup),
-            forest,
+            forest, // 返回森林结构
         )
     }
 
@@ -1024,6 +1054,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // Print total count of each gate type.
         debug!("Total gate counts:");
         for gate in self.gates.iter().cloned() {
+            // 计算每种门类型的实例数量
             let count = self
                 .gate_instances
                 .iter()
@@ -1050,10 +1081,13 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         self,
         commit_to_sigma: bool,
     ) -> CircuitData<F, C, D> {
+        // 尝试构建电路数据，并返回构建结果和成功标志
         let (circuit_data, success) = self.try_build_with_options(commit_to_sigma);
+        // 如果构建失败，则触发恐慌
         if !success {
             panic!("Failed to build circuit");
         }
+        // 返回构建的电路数据
         circuit_data
     }
 
@@ -1073,9 +1107,11 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // Hash the public inputs, and route them to a `PublicInputGate` which will enforce that
         // those hash wires match the claimed public inputs.
         let num_public_inputs = self.public_inputs.len();
+        println!("Public Inputs: {:?}", self.public_inputs);
         let public_inputs_hash =
             self.hash_n_to_hash_no_pad::<C::InnerHasher>(self.public_inputs.clone());
         let pi_gate = self.add_gate(PublicInputGate, vec![]);
+        println!("PublicInputGate: {:?}", PublicInputGate);
         for (&hash_part, wire) in public_inputs_hash
             .elements
             .iter()
@@ -1090,6 +1126,9 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
         // Make sure we have enough constant generators. If not, add a `ConstantGate`.
         while self.constants_to_targets.len() > self.constant_generators.len() {
+            let len1= self.constants_to_targets.len();
+            let len2 = self.constant_generators.len();
+            println!("constants_to_targets len1: {}, constant_generators len2: {}", len1, len2);
             self.add_gate(
                 ConstantGate {
                     num_consts: self.config.num_constants,
@@ -1097,7 +1136,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
                 vec![],
             );
         }
-
+        let len1= self.constants_to_targets.len();
+        let len2 = self.constant_generators.len();
         // For each constant-target pair used in the circuit, use a constant generator to fill this target.
         for ((c, t), mut const_gen) in self
             .constants_to_targets
@@ -1150,8 +1190,12 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         } else {
             0
         };
+        println!("constant_vecs: {:?}", constant_vecs);
+        println!("selectors_info: {:?}", selectors_info);
+        println!("self.constant_polys(): {:?}", self.constant_polys());
 
         constant_vecs.extend(self.constant_polys());
+        println!("constant_vecs: {:?}", constant_vecs);
         let num_constants = constant_vecs.len();
 
         let subgroup = F::two_adic_subgroup(degree_bits);
