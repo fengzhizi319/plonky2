@@ -78,6 +78,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             multiplicand_1,
             addend,
         };
+        //self.base_arithmetic_result是一个哈希表，用于缓存已经计算过的算术操作及其结果。
         if let Some(&result) = self.base_arithmetic_results.get(&operation) {
             return result;
         }
@@ -85,6 +86,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // Otherwise, we must actually perform the operation using an ArithmeticExtensionGate slot.
         let result = self.add_base_arithmetic_operation(operation);
         self.base_arithmetic_results.insert(operation, result);
+        println!("base_arithmetic_results: {:?}", self.base_arithmetic_results);
         result
     }
 
@@ -97,8 +99,11 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let wires_addend = Target::wire(gate, ArithmeticGate::wire_ith_addend(i));
 
         self.connect(operation.multiplicand_0, wires_multiplicand_0);
+        //println!("self.copy_constraints: {:?}", self.copy_constraints);
         self.connect(operation.multiplicand_1, wires_multiplicand_1);
+        //println!("self.copy_constraints: {:?}", self.copy_constraints);
         self.connect(operation.addend, wires_addend);
+        //println!("self.copy_constraints: {:?}", self.copy_constraints);
 
         Target::wire(gate, ArithmeticGate::wire_ith_output(i))
     }
@@ -193,6 +198,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
     pub fn add(&mut self, x: Target, y: Target) -> Target {
         let one = self.one();
         // x + y = 1 * x * 1 + 1 * y
+        //const_0 * multiplicand_0 * multiplicand_1 + const_1 * addend`
+        // const_0 = 1, const_1 = 1, multiplicand_0 = x, multiplicand_1 = 1, addend = y
         self.arithmetic(F::ONE, F::ONE, x, one, y)
     }
 

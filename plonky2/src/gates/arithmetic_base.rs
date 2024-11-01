@@ -27,9 +27,12 @@ use crate::util::serialization::{Buffer, IoResult, Read, Write};
 
 /// A gate which can perform a weighted multiply-add, i.e. `result = c0.x.y + c1.z`. If the config
 /// has enough routed wires, it can support several such operations in one gate.
+/// ArithmeticGate 是一个在电路中执行加权乘加操作的门。它可以执行如下操作：result = c0.x.y + c1.z，
+/// 其中 c0 和 c1 是常数，x、y 和 z 是输入。这个门可以在一个门中支持多个这样的操作，具体取决于配置
 #[derive(Debug, Clone)]
 pub struct ArithmeticGate {
     /// Number of arithmetic operations performed by an arithmetic gate.
+    /// num_ops: 表示一个 ArithmeticGate 可以执行的算术操作的数量。
     pub num_ops: usize,
 }
 
@@ -41,10 +44,12 @@ impl ArithmeticGate {
     }
 
     /// Determine the maximum number of operations that can fit in one gate for the given config.
+    ///  确定在给定配置下一个门中可以容纳的最大操作数
     pub(crate) const fn num_ops(config: &CircuitConfig) -> usize {
         let wires_per_op = 4;
         config.num_routed_wires / wires_per_op
     }
+    ///返回第 i 个操作的乘数、加数和输出的线索引。每个操作占用4个字段，所以要乘以4
 
     pub(crate) const fn wire_ith_multiplicand_0(i: usize) -> usize {
         4 * i
@@ -74,7 +79,9 @@ impl<F: RichField + Extendable<D>, const D: usize> Gate<F, D> for ArithmeticGate
         Ok(Self { num_ops })
     }
 
+    //eval_unfiltered 的方法，用于评估 ArithmeticGate 的约束条件
     fn eval_unfiltered(&self, vars: EvaluationVars<F, D>) -> Vec<F::Extension> {
+        //从 vars 中提取局部常量 const_0 和 const_1
         let const_0 = vars.local_constants[0];
         let const_1 = vars.local_constants[1];
 
@@ -131,6 +138,7 @@ impl<F: RichField + Extendable<D>, const D: usize> Gate<F, D> for ArithmeticGate
         constraints
     }
 
+    /// ArithmeticGate 的每个算术操作生成一个见证生成器，并将这些生成器收集到一个向量中返回。
     fn generators(&self, row: usize, local_constants: &[F]) -> Vec<WitnessGeneratorRef<F, D>> {
         (0..self.num_ops)
             .map(|i| {
@@ -141,7 +149,7 @@ impl<F: RichField + Extendable<D>, const D: usize> Gate<F, D> for ArithmeticGate
                         const_1: local_constants[1],
                         i,
                     }
-                    .adapter(),
+                        .adapter(),
                 )
             })
             .collect()
@@ -194,7 +202,7 @@ pub struct ArithmeticBaseGenerator<F: RichField + Extendable<D>, const D: usize>
 }
 
 impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F, D>
-    for ArithmeticBaseGenerator<F, D>
+for ArithmeticBaseGenerator<F, D>
 {
     fn id(&self) -> String {
         "ArithmeticBaseGenerator".to_string()
@@ -206,9 +214,9 @@ impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F, D>
             ArithmeticGate::wire_ith_multiplicand_1(self.i),
             ArithmeticGate::wire_ith_addend(self.i),
         ]
-        .iter()
-        .map(|&i| Target::wire(self.row, i))
-        .collect()
+            .iter()
+            .map(|&i| Target::wire(self.row, i))
+            .collect()
     }
 
     fn run_once(

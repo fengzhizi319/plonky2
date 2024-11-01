@@ -171,13 +171,13 @@ pub struct CircuitBuilder<F: RichField + Extendable<D>, const D: usize> {
     targets_to_constants: HashMap<Target, F>,
 
     /// Memoized results of `arithmetic` calls.
-    pub(crate) base_arithmetic_results: HashMap<BaseArithmeticOperation<F>, Target>,
+    pub base_arithmetic_results: HashMap<BaseArithmeticOperation<F>, Target>,
 
     /// Memoized results of `arithmetic_extension` calls.
     pub(crate) arithmetic_results: HashMap<ExtensionArithmeticOperation<F, D>, ExtensionTarget<D>>,
 
     /// Map between gate type and the current gate of this type with available slots.
-    current_slots: HashMap<GateRef<F, D>, CurrentSlot<F, D>>,
+    pub current_slots: HashMap<GateRef<F, D>, CurrentSlot<F, D>>,
 
     /// List of constant generators used to fill the constant wires.
     constant_generators: Vec<ConstantGenerator<F>>,
@@ -471,12 +471,15 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
         // Register this gate type if we haven't seen it before.
         let gate_ref = GateRef::new(gate_type);
+        println!("self.gates:{:?}", self.gates);
         self.gates.insert(gate_ref.clone());
 
         self.gate_instances.push(GateInstance {
             gate_ref,
             constants,
         });
+        println!("self.gates:{:?}", self.gates);
+        println!("self.gate_instances:{:?}", self.gate_instances);
 
         row
     }
@@ -524,6 +527,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         );
         self.copy_constraints
             .push(CopyConstraint::new((x, y), self.context_log.open_stack()));
+
     }
 
     /// Enforces that the underlying values of two [`Target`] arrays are equal.
@@ -798,24 +802,34 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
     /// Find an available slot, of the form `(row, op)` for gate `G` using parameters `params`
     /// and constants `constants`. Parameters are any data used to differentiate which gate should be
     /// used for the given operation.
+    /// 用于在电路中查找或分配一个可用的插槽。以下是对代码的详细解释：
     pub fn find_slot<G: Gate<F, D> + Clone>(
         &mut self,
         gate: G,
         params: &[F],
         constants: &[F],
     ) -> (usize, usize) {
+        //获取当前电路中已有的门的数量
         let num_gates = self.num_gates();
+        //获取门 gate 的操作数数量
         let num_ops = gate.num_ops();
+        //创建一个新的 GateRef，引用传入的门 gate
         let gate_ref = GateRef::new(gate.clone());
+        //在 current_slots 哈希表中查找或创建一个新的 gate_slot 条目
         let gate_slot = self.current_slots.entry(gate_ref.clone()).or_default();
+        //在 current_slot 中查找与 params 对应的插槽
         let slot = gate_slot.current_slot.get(params);
+        //如果找到了插槽，则使用该插槽的索引；否则，添加一个新的门，并将插槽索引设置为 (num_gates, 0)。
         let (gate_idx, slot_idx) = if let Some(&s) = slot {
             s
         } else {
             self.add_gate(gate, constants.to_vec());
             (num_gates, 0)
         };
+        //获取当前插槽的可变引用
         let current_slot = &mut self.current_slots.get_mut(&gate_ref).unwrap().current_slot;
+        //println!("current_slot:{:?}", current_slot);
+        //如果当前插槽已满，则移除该插槽；否则，更新插槽的操作数索引
         if slot_idx == num_ops - 1 {
             // We've filled up the slots at this index.
             current_slot.remove(params);
@@ -823,7 +837,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             // Increment the slot operation index.
             current_slot.insert(params.to_vec(), (gate_idx, slot_idx + 1));
         }
-
+        //println!("current_slot:{:?}", current_slot);
+        //返回找到或分配的插槽索引。
         (gate_idx, slot_idx)
     }
 
@@ -1138,6 +1153,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         }
         let len1= self.constants_to_targets.len();
         let len2 = self.constant_generators.len();
+        println!("constants_to_targets len1: {}, constant_generators len2: {}", len1, len2);
         // For each constant-target pair used in the circuit, use a constant generator to fill this target.
         for ((c, t), mut const_gen) in self
             .constants_to_targets
