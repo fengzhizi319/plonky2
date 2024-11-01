@@ -25,12 +25,14 @@ pub struct PolynomialValues<F: Field> {
 }
 
 impl<F: Field> PolynomialValues<F> {
+    //创建一个新的 PolynomialValues 实例，并检查向量的长度是否为 2 的幂
     pub fn new(values: Vec<F>) -> Self {
         // Check that a subgroup exists of this size, which should be a power of two.
         debug_assert!(log2_strict(values.len()) <= F::TWO_ADICITY);
         PolynomialValues { values }
     }
 
+    //创建一个所有值都相同的多项式
     pub fn constant(value: F, len: usize) -> Self {
         Self::new(vec![value; len])
     }
@@ -44,6 +46,7 @@ impl<F: Field> PolynomialValues<F> {
     }
 
     /// Returns the polynomial whole value is one at the given index, and zero elsewhere.
+    /// 创建一个在特定索引处为一，其余为零的多项式
     pub fn selector(len: usize, index: usize) -> Self {
         let mut result = Self::zero(len);
         result.values[index] = F::ONE;
@@ -55,11 +58,13 @@ impl<F: Field> PolynomialValues<F> {
         self.values.len()
     }
 
+    //对多项式进行逆快速傅里叶变换，返回系数形式的多项式
     pub fn ifft(self) -> PolynomialCoeffs<F> {
         ifft(self)
     }
 
     /// Returns the polynomial whose evaluation on the coset `shift*H` is `self`.
+    /// 对多项式进行逆快速傅里叶变换，并将其扩展到一个又陪集子群上
     pub fn coset_ifft(self, shift: F) -> PolynomialCoeffs<F> {
         let mut shifted_coeffs = self.ifft();
         shifted_coeffs
@@ -72,16 +77,19 @@ impl<F: Field> PolynomialValues<F> {
         shifted_coeffs
     }
 
+    //对多个多项式进行低度扩展
     pub fn lde_multiple(polys: Vec<Self>, rate_bits: usize) -> Vec<Self> {
         polys.into_iter().map(|p| p.lde(rate_bits)).collect()
     }
 
+    //对多项式进行低度扩展
     pub fn lde(self, rate_bits: usize) -> Self {
         let coeffs = ifft(self).lde(rate_bits);
         fft_with_options(coeffs, Some(rate_bits), None)
     }
 
     /// Low-degree extend `Self` (seen as evaluations over the subgroup) onto a coset.
+    /// 将多项式扩展到一个余子群
     pub fn lde_onto_coset(self, rate_bits: usize) -> Self {
         let coeffs = ifft(self).lde(rate_bits);
         coeffs.coset_fft_with_options(F::coset_shift(), Some(rate_bits), None)
@@ -96,6 +104,7 @@ impl<F: Field> PolynomialValues<F> {
     }
 
     /// Adds `rhs * rhs_weight` to `self`. Assumes `self.len() == rhs.len()`.
+    /// rhs 乘以 rhs_weight 后加到当前多项式上
     pub fn add_assign_scaled(&mut self, rhs: &Self, rhs_weight: F) {
         self.values
             .iter_mut()
@@ -116,7 +125,7 @@ impl<F: Field> From<Vec<F>> for PolynomialValues<F> {
 pub struct PolynomialCoeffs<F: Field> {
     pub coeffs: Vec<F>,
 }
-
+//PolynomialCoeffs是一个表示多项式系数形式的结构体。系数形式意味着多项式的值是通过其系数来表示的。
 impl<F: Field> PolynomialCoeffs<F> {
     pub fn new(coeffs: Vec<F>) -> Self {
         PolynomialCoeffs { coeffs }
@@ -141,10 +150,12 @@ impl<F: Field> PolynomialCoeffs<F> {
         self.coeffs.len()
     }
 
+    //返回多项式长度的对数
     pub fn log_len(&self) -> usize {
         log2_strict(self.len())
     }
 
+    //将多项式分块
     pub fn chunks(&self, chunk_size: usize) -> Vec<Self> {
         self.coeffs
             .chunks(chunk_size)
@@ -152,6 +163,7 @@ impl<F: Field> PolynomialCoeffs<F> {
             .collect()
     }
 
+    //在点 x 处评估多项式，返回多项式在 x 处的值
     pub fn eval(&self, x: F) -> F {
         self.coeffs
             .iter()
@@ -160,6 +172,7 @@ impl<F: Field> PolynomialCoeffs<F> {
     }
 
     /// Evaluate the polynomial at a point given its powers. The first power is the point itself, not 1.
+    /// 在给定点的幂处评估多项式，返回多项式在给定点的值
     pub fn eval_with_powers(&self, powers: &[F]) -> F {
         debug_assert_eq!(self.coeffs.len(), powers.len() + 1);
         let acc = self.coeffs[0];
@@ -169,14 +182,16 @@ impl<F: Field> PolynomialCoeffs<F> {
             .fold(acc, |acc, (&x, &c)| acc + c * x)
     }
 
+
+    //在基域点 x 处评估多项式
     pub fn eval_base<const D: usize>(&self, x: F::BaseField) -> F
     where
         F: FieldExtension<D>,
     {
         self.coeffs
-            .iter()
-            .rev()
-            .fold(F::ZERO, |acc, &c| acc.scalar_mul(x) + c)
+            .iter() // 迭代多项式的系数
+            .rev() // 反转迭代顺序，从最高次项开始
+            .fold(F::ZERO, |acc, &c| acc.scalar_mul(x) + c) // 使用折叠操作计算多项式的值
     }
 
     /// Evaluate the polynomial at a point given its powers. The first power is the point itself, not 1.
@@ -218,12 +233,14 @@ impl<F: Field> PolynomialCoeffs<F> {
     }
 
     /// Removes any leading zero coefficients.
+    /// 移除多项式的前导零系数
     pub fn trim(&mut self) {
         self.coeffs.truncate(self.degree_plus_one());
     }
 
     /// Removes some leading zero coefficients, such that a desired length is reached. Fails if a
     /// nonzero coefficient is encountered before then.
+    /// 将多项式修剪到指定长度
     pub fn trim_to_len(&mut self, len: usize) -> Result<()> {
         ensure!(self.len() >= len);
         ensure!(self.coeffs[len..].iter().all(F::is_zero));
@@ -232,6 +249,7 @@ impl<F: Field> PolynomialCoeffs<F> {
     }
 
     /// Removes any leading zero coefficients.
+    /// 返回移除前导零系数后的多项式
     pub fn trimmed(&self) -> Self {
         let coeffs = self.coeffs[..self.degree_plus_one()].to_vec();
         Self { coeffs }
@@ -245,7 +263,7 @@ impl<F: Field> PolynomialCoeffs<F> {
             .map_or(0, |i| i + 1)
     }
 
-    /// Leading coefficient.
+    /// Leading coefficient.返回多项式的首项系数
     pub fn lead(&self) -> F {
         self.coeffs
             .iter()
@@ -255,6 +273,7 @@ impl<F: Field> PolynomialCoeffs<F> {
     }
 
     /// Reverse the order of the coefficients, not taking into account the leading zero coefficients.
+    /// 返回系数顺序反转的多项式
     pub(crate) fn rev(&self) -> Self {
         Self::new(self.trimmed().coeffs.into_iter().rev().collect())
     }
@@ -263,6 +282,7 @@ impl<F: Field> PolynomialCoeffs<F> {
         fft(self)
     }
 
+    //带选项的快速傅里叶变换
     pub fn fft_with_options(
         self,
         zero_factor: Option<usize>,
@@ -277,6 +297,7 @@ impl<F: Field> PolynomialCoeffs<F> {
     }
 
     /// Returns the evaluation of the polynomial on the coset `shift*H`.
+    /// 带选项的余子群快速傅里叶变换
     pub fn coset_fft_with_options(
         &self,
         shift: F,
@@ -292,6 +313,7 @@ impl<F: Field> PolynomialCoeffs<F> {
         modified_poly.fft_with_options(zero_factor, root_table)
     }
 
+    //将多项式转换为扩展域
     pub fn to_extension<const D: usize>(&self) -> PolynomialCoeffs<F::Extension>
     where
         F: Extendable<D>,
@@ -299,6 +321,8 @@ impl<F: Field> PolynomialCoeffs<F> {
         PolynomialCoeffs::new(self.coeffs.iter().map(|&c| c.into()).collect())
     }
 
+
+    //将多项式与扩展域元素相乘
     pub fn mul_extension<const D: usize>(&self, rhs: F::Extension) -> PolynomialCoeffs<F::Extension>
     where
         F: Extendable<D>,
