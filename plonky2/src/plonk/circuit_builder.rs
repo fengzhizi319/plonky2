@@ -1249,6 +1249,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
         let (mut constant_vecs, selectors_info) =
             selector_polynomials(&gates, &self.gate_instances, quotient_degree_factor + 1);
+        println!("constant_vecs: {:?}", constant_vecs);
+        println!("selectors_info: {:?}", selectors_info);
 
         // Get the lookup selectors.
         let num_lookup_selectors = if num_luts != 0 {
@@ -1264,13 +1266,16 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         };
         // println!("constant_vecs: {:?}", constant_vecs);
         // println!("selectors_info: {:?}", selectors_info);
-        // println!("self.constant_polys(): {:?}", self.constant_polys());
+        println!("self.constant_polys(): {:?}", self.constant_polys());
+        println!("constant_vecs: {:?}", constant_vecs);
 
         constant_vecs.extend(self.constant_polys());
-        //println!("constant_vecs: {:?}", constant_vecs);
+
+        println!("constant_vecs: {:?}", constant_vecs);
         let num_constants = constant_vecs.len();
 
         let subgroup = F::two_adic_subgroup(degree_bits);
+        println!("subgroup: {:?}", subgroup);
 
         let k_is = get_unique_coset_shifts(degree, self.config.num_routed_wires);
         let (sigma_vecs, forest) = timed!(
