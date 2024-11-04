@@ -9,6 +9,7 @@ use crate::types::Field;
 ///  查找一组移位值，这些移位值会生成大小为 `2^subgroup_bits` 的乘法子群的唯一陪集。
 pub fn get_unique_coset_shifts<F: Field>(subgroup_size: usize, num_shifts: usize) -> Vec<F> {
     // From Lagrange's theorem.根据拉格朗日定理计算陪集的数量。
+    //拉格朗日定理：群的阶=子群的阶*陪集的数量
     let num_cosets = (F::order() - 1u32) / (subgroup_size as u32);
     assert!(
         BigUint::from(num_shifts) <= num_cosets,
@@ -39,7 +40,7 @@ mod tests {
 
     #[test]
     fn distinct_cosets() {
-        type F = GoldilocksField;
+        type F = GoldilocksField;//p=2**32 * (2**32 - 1) + 1
         const SUBGROUP_BITS: usize = 5;
         const NUM_SHIFTS: usize = 50;
 
