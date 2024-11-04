@@ -1277,6 +1277,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let subgroup = F::two_adic_subgroup(degree_bits);
         println!("subgroup: {:?}", subgroup);
 
+
         let k_is = get_unique_coset_shifts(degree, self.config.num_routed_wires);
         let (sigma_vecs, forest) = timed!(
             timing,
