@@ -265,6 +265,7 @@ pub trait Field:
         }
     }
 
+    ///计算子群的生成元
     fn primitive_root_of_unity(n_log: usize) -> Self {
         assert!(n_log <= Self::TWO_ADICITY);
         let base = Self::POWER_OF_TWO_GENERATOR;

@@ -48,7 +48,6 @@ mod tests {
         let subgroup_size = 1 << SUBGROUP_BITS;
 
         let shifts = get_unique_coset_shifts::<F>(subgroup_size, NUM_SHIFTS);
-
         let mut union = HashSet::new();
         for shift in shifts {
             let coset = F::cyclic_subgroup_coset_known_order(generator, shift, subgroup_size);
