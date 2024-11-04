@@ -86,7 +86,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // Otherwise, we must actually perform the operation using an ArithmeticExtensionGate slot.
         let result = self.add_base_arithmetic_operation(operation);
         self.base_arithmetic_results.insert(operation, result);
-        println!("base_arithmetic_results: {:?}", self.base_arithmetic_results);
+        //println!("base_arithmetic_results: {:?}", self.base_arithmetic_results);
         result
     }
 

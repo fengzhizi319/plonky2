@@ -21,10 +21,10 @@ fn main() -> Result<()> {
     let initial_b = builder.add_virtual_target();
     let mut prev_target = initial_a;
     let mut cur_target = initial_b;
-    for i in 0..40 {
-        println!("{}", i,);
-        println!("begin prev_target:{:?}", prev_target);
-        println!("begin cur_target:{:?}", cur_target);
+    for i in 0..30 {
+        // println!("{}", i,);
+        // println!("begin prev_target:{:?}", prev_target);
+        // println!("begin cur_target:{:?}", cur_target);
 
 
         let temp = builder.add(prev_target, cur_target);

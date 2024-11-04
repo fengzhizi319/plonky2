@@ -110,21 +110,33 @@ pub(crate) fn selector_ends_lookups<F: RichField + Extendable<D>, const D: usize
 ///         k
 ///     else
 ///         UNUSED_SELECTOR
+/// 返回选择器多项式及其相关信息。
+///用于计算选择器多项式及其相关信息。选择器多项式用于将电路中的门分组，并为每组门生成一个选择器多项式。
+/// 选择器多项式的计算方式如下：
+/// 将门分成最小数量的组 `{ G_i }`，使得每组 `G` 满足 `|G| + max_{g in G} g.degree() <= max_degree`。
+/// 这些组是从按度数排序的门列表中贪心构造的。
+/// 我们为每组 `G_i` 构建一个选择器多项式 `S_i`，其定义如下：
+/// S_i\[j\] =
+///     如果第 j 行的门是 G_i 中的 g_k
+///         k
+///     否则
+///         UNUSED_SELECTOR
 pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>(
-    gates: &[GateRef<F, D>],
-    instances: &[GateInstance<F, D>],
-    max_degree: usize,
+    gates: &[GateRef<F, D>], // 门的引用数组
+    instances: &[GateInstance<F, D>], // 门实例数组
+    max_degree: usize, // 最大度数
 ) -> (Vec<PolynomialValues<F>>, SelectorsInfo) {
-    let n = instances.len();
-    let num_gates = gates.len();
-    let max_gate_degree = gates.last().expect("No gates?").0.degree();
+    let n = instances.len(); // 门实例的数量
+    let num_gates = gates.len(); // 门的数量
+    let max_gate_degree = gates.last().expect("No gates?").0.degree(); // 获取最后一个门的度数
 
+    // 获取门的索引
     let index = |id| gates.iter().position(|g| g.0.id() == id).unwrap();
 
-    // Special case if we can use only one selector polynomial.
+    // 特殊情况：如果我们只需要一个选择器多项式
     if max_gate_degree + num_gates - 1 <= max_degree {
-        // We *want* `groups` to be a vector containing one Range (all gates are in one selector group),
-        // but Clippy doesn't trust us.
+        // 我们希望 `groups` 是一个包含一个范围的向量（所有门都在一个选择器组中），
+        // 但 Clippy 不信任我们。
         #[allow(clippy::single_range_in_vec_init)]
         return (
             vec![PolynomialValues::new(
@@ -134,12 +146,13 @@ pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>
                     .collect(),
             )],
             SelectorsInfo {
-                selector_indices: vec![0; num_gates],
-                groups: vec![0..num_gates],
+                selector_indices: vec![0; num_gates], // 选择器索引
+                groups: vec![0..num_gates], // 组的范围
             },
         );
     }
 
+    // 如果最大门度数大于等于最大度数，抛出异常
     if max_gate_degree >= max_degree {
         panic!(
             "{} has too high degree. Consider increasing `quotient_degree_factor`.",
@@ -147,7 +160,7 @@ pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>
         );
     }
 
-    // Greedily construct the groups.
+    // 贪心构造组
     let mut groups = Vec::new();
     let mut start = 0;
     while start < num_gates {
@@ -159,14 +172,16 @@ pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>
         start += size;
     }
 
+    // 获取组的索引
     let group = |i| groups.iter().position(|range| range.contains(&i)).unwrap();
 
-    // `selector_indices[i] = j` iff the `i`-th gate uses the `j`-th selector polynomial.
+    // `selector_indices[i] = j` 表示第 i 个门使用第 j 个选择器多项式。
     let selector_indices = (0..num_gates).map(group).collect();
 
-    // Placeholder value to indicate that a gate doesn't use a selector polynomial.
+    // 占位符值，表示门不使用选择器多项式。
     let unused = F::from_canonical_usize(UNUSED_SELECTOR);
 
+    // 初始化多项式
     let mut polynomials = vec![PolynomialValues::zero(n); groups.len()];
     for (j, g) in instances.iter().enumerate() {
         let GateInstance { gate_ref, .. } = g;

@@ -5,7 +5,7 @@ use alloc::{collections::BTreeMap, sync::Arc, vec, vec::Vec};
 use core::cmp::max;
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, sync::Arc};
-
+use std::fmt;
 use hashbrown::{HashMap, HashSet};
 use itertools::Itertools;
 use log::{debug, info, warn, Level};
@@ -165,7 +165,7 @@ pub struct CircuitBuilder<F: RichField + Extendable<D>, const D: usize> {
     context_log: ContextTree,
 
     /// Generators used to generate the witness.
-    generators: Vec<WitnessGeneratorRef<F, D>>,
+    pub generators: Vec<WitnessGeneratorRef<F, D>>,
 
     constants_to_targets: HashMap<F, Target>,
     targets_to_constants: HashMap<Target, F>,
@@ -233,6 +233,31 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         builder.check_config();
         builder
     }
+    pub fn print_copy_constraints(&self) {
+        println!("copy_constraints len is {:?}",self.copy_constraints.len());
+        for constraint in &self.copy_constraints {
+            println!("{:?}", constraint);
+        }
+    }
+    pub fn print_generators(&self) {
+        println!("generators len is {:?}",self.generators.len());
+        for generator in &self.generators {
+            println!("{:?}", generator);
+        }
+    }
+    pub fn print_gate_instances(&self) {
+        println!("gate_instances len is {:?}",self.gate_instances.len());
+        for gate_instance in &self.gate_instances {
+            println!("{:?}", gate_instance);
+        }
+    }
+    pub fn print_gates(&self) {
+        println!("gates len is {:?}",self.gate_instances.len());
+        for gate in &self.gates {
+            println!("{:?}", gate);
+        }
+    }
+
 
     /// Assert that the configuration used to create this `CircuitBuilder` is consistent,
     /// i.e. that the different parameters meet the targeted security level.
@@ -471,15 +496,15 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
         // Register this gate type if we haven't seen it before.
         let gate_ref = GateRef::new(gate_type);
-        println!("self.gates:{:?}", self.gates);
+        //println!("self.gates:{:?}", self.gates);
         self.gates.insert(gate_ref.clone());
 
         self.gate_instances.push(GateInstance {
             gate_ref,
             constants,
         });
-        println!("self.gates:{:?}", self.gates);
-        println!("self.gate_instances:{:?}", self.gate_instances);
+        // println!("self.gates:{:?}", self.gates);
+        // println!("self.gate_instances:{:?}", self.gate_instances);
 
         row
     }
@@ -1115,8 +1140,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         #[cfg(feature = "std")]
         let start = Instant::now();
 
-        let rate_bits = self.config.fri_config.rate_bits;
-        let cap_height = self.config.fri_config.cap_height;
+        let rate_bits = self.config.fri_config.rate_bits;//3
+        let cap_height = self.config.fri_config.cap_height;//4
         // Total number of LUTs.
         let num_luts = self.get_luts_length();
         // Hash the public inputs, and route them to a `PublicInputGate` which will enforce that
@@ -1127,6 +1152,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             self.hash_n_to_hash_no_pad::<C::InnerHasher>(self.public_inputs.clone());
         let pi_gate = self.add_gate(PublicInputGate, vec![]);
         println!("PublicInputGate: {:?}", PublicInputGate);
+        //self.print_copy_constraints();
         for (&hash_part, wire) in public_inputs_hash
             .elements
             .iter()
@@ -1134,7 +1160,11 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         {
             self.connect(hash_part, Target::wire(pi_gate, wire))
         }
+        println!("---------------");
+        self.print_copy_constraints();
+        //self.print_generators();
         self.randomize_unused_pi_wires(pi_gate);
+        self.print_generators();
 
         // Place LUT-related gates.
         self.add_all_lookups();
@@ -1155,6 +1185,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let len2 = self.constant_generators.len();
         println!("constants_to_targets len1: {}, constant_generators len2: {}", len1, len2);
         // For each constant-target pair used in the circuit, use a constant generator to fill this target.
+        println!("constants_to_targets: {:?}", self.constants_to_targets);
         for ((c, t), mut const_gen) in self
             .constants_to_targets
             .clone()
@@ -1172,12 +1203,19 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             const_gen.set_constant(c);
             self.add_simple_generator(const_gen);
         }
-
+        self.print_gate_instances();
+        /*
+        GateInstance { gate_ref: ArithmeticGate { num_ops: 20 }, constants: [1, 1] }
+        GateInstance { gate_ref: ArithmeticGate { num_ops: 20 }, constants: [1, 1] }
+        GateInstance { gate_ref: PoseidonGate(PhantomData<plonky2_field::goldilocks_field::GoldilocksField>)<WIDTH=12>, constants: [] }
+        GateInstance { gate_ref: PublicInputGate, constants: [] }
+        GateInstance { gate_ref: ConstantGate { num_consts: 2 }, constants: [0, 1] }
+         */
         debug!(
             "Degree before blinding & padding: {}",
             self.gate_instances.len()
         );
-        self.blind_and_pad();
+        self.blind_and_pad();//增加到2^n个门
         let degree = self.gate_instances.len();
         debug!("Degree after blinding & padding: {}", degree);
         let degree_bits = log2_strict(degree);
@@ -1186,11 +1224,29 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             fri_params.total_arities() <= degree_bits + rate_bits - cap_height,
             "FRI total reduction arity is too large.",
         );
-
-        let quotient_degree_factor = self.config.max_quotient_degree_factor;
+        println!("fri_params: {:?}", fri_params);
+        /*
+        FriParams {
+        config:
+        FriConfig{
+            rate_bits: 3,
+            cap_height: 4,
+            proof_of_work_bits: 16,
+            reduction_strategy: ConstantArityBits(4, 5),
+            num_query_rounds: 28
+        },
+         hiding: false,
+         degree_bits: 3,
+         reduction_arity_bits: [] }
+       */
+        let quotient_degree_factor = self.config.max_quotient_degree_factor;//8
         let mut gates = self.gates.iter().cloned().collect::<Vec<_>>();
         // Gates need to be sorted by their degrees (and ID to make the ordering deterministic) to compute the selector polynomials.
+        println!("gates: {:?}", gates);
+        //gates 向量将首先按门的度数排序，如果度数相同，则按门的 ID 排序
         gates.sort_unstable_by_key(|g| (g.0.degree(), g.0.id()));
+        println!("after gates: {:?}", gates);
+
         let (mut constant_vecs, selectors_info) =
             selector_polynomials(&gates, &self.gate_instances, quotient_degree_factor + 1);
 
@@ -1206,12 +1262,12 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         } else {
             0
         };
-        println!("constant_vecs: {:?}", constant_vecs);
-        println!("selectors_info: {:?}", selectors_info);
-        println!("self.constant_polys(): {:?}", self.constant_polys());
+        // println!("constant_vecs: {:?}", constant_vecs);
+        // println!("selectors_info: {:?}", selectors_info);
+        // println!("self.constant_polys(): {:?}", self.constant_polys());
 
         constant_vecs.extend(self.constant_polys());
-        println!("constant_vecs: {:?}", constant_vecs);
+        //println!("constant_vecs: {:?}", constant_vecs);
         let num_constants = constant_vecs.len();
 
         let subgroup = F::two_adic_subgroup(degree_bits);
