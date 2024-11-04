@@ -1123,7 +1123,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
     ) -> CircuitData<F, C, D> {
         // 尝试构建电路数据，并返回构建结果和成功标志
         let (circuit_data, success) = self.try_build_with_options(commit_to_sigma);
-        // 如果构建失败，则触发恐慌
+        // 如果构建失败，则触发panic
         if !success {
             panic!("Failed to build circuit");
         }
@@ -1277,6 +1277,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let subgroup = F::two_adic_subgroup(degree_bits);
         println!("subgroup: {:?}", subgroup);
 
+        //计算陪集的移位生成元，即a*H中的a，H为子集.所以通过a即可得到子集H的全部陪集
         let k_is = get_unique_coset_shifts(degree, self.config.num_routed_wires);
         let (sigma_vecs, forest) = timed!(
             timing,
