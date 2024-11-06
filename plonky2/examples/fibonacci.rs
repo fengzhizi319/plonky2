@@ -1,4 +1,4 @@
-use anyhow::Result;
+ use anyhow::Result;
 use plonky2::field::types::Field;
 use plonky2::iop::witness::{PartialWitness, WitnessWrite};
 use plonky2::plonk::circuit_builder::CircuitBuilder;
@@ -21,7 +21,7 @@ fn main() -> Result<()> {
     let initial_b = builder.add_virtual_target();
     let mut prev_target = initial_a;
     let mut cur_target = initial_b;
-    for i in 0..30 {
+    for i in 0..4 {
         // println!("{}", i,);
         // println!("begin prev_target:{:?}", prev_target);
         // println!("begin cur_target:{:?}", cur_target);
@@ -35,7 +35,11 @@ fn main() -> Result<()> {
         // println!("after cur_target:{:?}", cur_target);
         // println!("after output:{:?}", temp);
         // println!("gate_instances{:?}", builder.gate_instances);
-        // println!("copy_constraints{:?}", builder.copy_constraints);
+        //builder.print_copy_constraints();
+        println!("current_slots{:?}", builder.current_slots);
+        //println!("constants_to_targets{:?}", builder.constants_to_targets);
+        builder.print_constants_to_targets();
+
         //println!("current_slots{:?}", builder.current_slots);
         // println!("gates{:?}", builder.gates);
         //println!("base_arithmetic_results{:?}", builder.base_arithmetic_results);

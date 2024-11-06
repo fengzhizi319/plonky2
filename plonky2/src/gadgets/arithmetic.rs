@@ -196,7 +196,11 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
     /// Computes `x + y`.
     pub fn add(&mut self, x: Target, y: Target) -> Target {
+
         let one = self.one();
+        // println!("one:{:?}", one);
+        // println!("x:{:?}", x);
+        // println!("y:{:?}", y);
         // x + y = 1 * x * 1 + 1 * y
         //const_0 * multiplicand_0 * multiplicand_1 + const_1 * addend`
         // const_0 = 1, const_1 = 1, multiplicand_0 = x, multiplicand_1 = 1, addend = y
