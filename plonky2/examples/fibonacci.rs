@@ -28,17 +28,17 @@ fn main() -> Result<()> {
 
 
         let temp = builder.add(prev_target, cur_target);
-        if i==21 {
-            println!("-----------------------");
-        }
+        // if i==21 {
+        //     println!("-----------------------");
+        // }
         // println!("after prev_target:{:?}", prev_target);
         // println!("after cur_target:{:?}", cur_target);
         // println!("after output:{:?}", temp);
         // println!("gate_instances{:?}", builder.gate_instances);
         //builder.print_copy_constraints();
-        println!("current_slots{:?}", builder.current_slots);
+        //println!("current_slots{:?}", builder.current_slots);
         //println!("constants_to_targets{:?}", builder.constants_to_targets);
-        builder.print_constants_to_targets();
+       //builder.print_constants_to_targets();
 
         //println!("current_slots{:?}", builder.current_slots);
         // println!("gates{:?}", builder.gates);
@@ -54,11 +54,13 @@ fn main() -> Result<()> {
     builder.register_public_input(initial_a);
     builder.register_public_input(initial_b);
     builder.register_public_input(cur_target);
+    //builder.print_public_inputs();
 
     // Provide initial values.
     let mut pw = PartialWitness::new();
     pw.set_target(initial_a, F::ZERO)?;
     pw.set_target(initial_b, F::ONE)?;
+    //println!("pw:{:?}", pw);
 
     let data = builder.build::<C>();
     let proof = data.prove(pw)?;

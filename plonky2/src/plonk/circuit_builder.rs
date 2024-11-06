@@ -242,7 +242,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
     pub fn print_generators(&self) {
         println!("generators len is {:?}",self.generators.len());
         for generator in &self.generators {
-            println!("{:?}", generator);
+
+            println!("{:?}", generator.0);
         }
     }
     pub fn print_gate_instances(&self) {
@@ -262,6 +263,13 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         println!("constants_to_targets len is {:?}",self.constants_to_targets.len());
         for (key, value) in &self.constants_to_targets {
             println!("key:{:?},value:{:?}", key, value);
+        }
+    }
+    //print_public_inputs
+    pub fn print_public_inputs(&self) {
+        println!("public_inputs len is {:?}",self.public_inputs.len());
+        for public_input in &self.public_inputs {
+            println!("{:?}", public_input);
         }
     }
 
@@ -615,8 +623,11 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
     }
 
     pub fn add_simple_generator<G: SimpleGenerator<F, D>>(&mut self, generator: G) {
-        self.generators
-            .push(WitnessGeneratorRef::new(generator.adapter()));
+        let tmp=WitnessGeneratorRef::new(generator.adapter());
+        //println!("WitnessGeneratorRef::new{:?}",tmp);
+        self.generators.push(tmp);
+        // self.generators
+        //     .push(WitnessGeneratorRef::new(generator.adapter()));
     }
 
     /// Returns a routable target with a value of 0.
@@ -1116,10 +1127,15 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
     /// division by zero, the next attempt will have an (almost) independent chance of success.
     /// See <https://github.com/0xPolygonZero/plonky2/issues/456>.
     fn randomize_unused_pi_wires(&mut self, pi_gate: usize) {
+        //self.config.num_wires=135
+        //PublicInputGate::wires_public_inputs_hash().end=4
         for wire in PublicInputGate::wires_public_inputs_hash().end..self.config.num_wires {
-            self.add_simple_generator(RandomValueGenerator {
-                target: Target::wire(pi_gate, wire),
-            });
+            let tmp=RandomValueGenerator {target: Target::wire(pi_gate, wire)};
+            //println!("RandomValueGenerator: {:?}", tmp);
+            self.add_simple_generator(tmp);
+            // self.add_simple_generator(RandomValueGenerator {
+            //     target: Target::wire(pi_gate, wire),
+            // });
         }
     }
 
@@ -1154,12 +1170,23 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // Hash the public inputs, and route them to a `PublicInputGate` which will enforce that
         // those hash wires match the claimed public inputs.
         let num_public_inputs = self.public_inputs.len();
-        println!("Public Inputs: {:?}", self.public_inputs);
+        //println!("Public Inputs: {:?}", self.public_inputs);
+        self.print_public_inputs();
+
+        //新增加一个PoseidonGate，并将public_inputs与PoseidonGate连接
         let public_inputs_hash =
             self.hash_n_to_hash_no_pad::<C::InnerHasher>(self.public_inputs.clone());
+        println!("Public Inputs Hash: {:?}", public_inputs_hash);
         let pi_gate = self.add_gate(PublicInputGate, vec![]);
-        println!("PublicInputGate: {:?}", PublicInputGate);
-        //self.print_copy_constraints();
+
+        //self.print_gates();
+        //把PoseidonGate剩余线（ row: 1）（column:12，13，14，15）跟新的PublicInputGate连接
+        /*
+        CopyConstraint { pair: (Wire(Wire { row: 1, column: 12 }), Wire(Wire { row: 2, column: 0 })), name: "root" }
+        CopyConstraint { pair: (Wire(Wire { row: 1, column: 13 }), Wire(Wire { row: 2, column: 1 })), name: "root" }
+        CopyConstraint { pair: (Wire(Wire { row: 1, column: 14 }), Wire(Wire { row: 2, column: 2 })), name: "root" }
+        CopyConstraint { pair: (Wire(Wire { row: 1, column: 15 }), Wire(Wire { row: 2, column: 3 })), name: "root" }
+       */
         for (&hash_part, wire) in public_inputs_hash
             .elements
             .iter()
@@ -1167,11 +1194,13 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         {
             self.connect(hash_part, Target::wire(pi_gate, wire))
         }
+        //self.print_copy_constraints();
         println!("---------------");
-        self.print_copy_constraints();
+        //self.print_copy_constraints();
         //self.print_generators();
+        //self.generators初始化为"RandomValueGenerator"
         self.randomize_unused_pi_wires(pi_gate);
-        self.print_generators();
+        //self.print_generators();
 
         // Place LUT-related gates.
         self.add_all_lookups();

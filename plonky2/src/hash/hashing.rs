@@ -32,27 +32,46 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         inputs: Vec<Target>,
         num_outputs: usize,
     ) -> Vec<Target> {
+        // 获取零值
         let zero = self.zero();
+        // 初始化状态，使用零值填充,WIDTH=12,H::AlgebraicPermutation::WIDTH=8
         let mut state = H::AlgebraicPermutation::new(core::iter::repeat(zero));
-
-        // Absorb all input chunks.
+         //print_state
+         println!("state1:{:?}",state);
+        //print H::AlgebraicPermutation::WIDTH
+        println!("H::AlgebraicPermutation::WIDTH:{:?}",H::AlgebraicPermutation::WIDTH);
+        println!("H::AlgebraicPermutation::RATE:{:?}",H::AlgebraicPermutation::RATE);
+        // 吸收所有输入块
+        //H::AlgebraicPermutation::RATE=8
+        //通过 chunks 方法将 inputs 向量按 H::AlgebraicPermutation::RATE 的大小进行分块，并遍历每个分块进行处理。
         for input_chunk in inputs.chunks(H::AlgebraicPermutation::RATE) {
-            // Overwrite the first r elements with the inputs. This differs from a standard sponge,
-            // where we would xor or add in the inputs. This is a well-known variant, though,
-            // sometimes called "overwrite mode".
+            // 用输入覆盖前 r 个元素。这与标准的海绵函数不同，标准海绵函数会对输入进行异或或加法操作。
+            // 这种变体有时被称为“覆盖模式”。
+            //println!("input_chunk:{:?}",input_chunk);
             state.set_from_slice(input_chunk, 0);
+            //println!("state2:{:?}",state);
+            //self.print_gates();
+            //self.print_copy_constraints();
+            // 对状态进行置换，新增加一个PoseidonGate进行copy约束，copy约束增加到copy_constraints中
             state = self.permute::<H>(state);
+            //self.print_gates();
+            //self.print_copy_constraints();
+            //println!("state3:{:?}",state);
         }
 
-        // Squeeze until we have the desired number of outputs.
+        // 挤出直到我们得到所需数量的输出
         let mut outputs = Vec::with_capacity(num_outputs);
         loop {
+            // 从状态中挤出元素
             for &s in state.squeeze() {
+                println!("s:{:?}",s);
                 outputs.push(s);
+                // 如果输出数量达到要求，返回输出
                 if outputs.len() == num_outputs {
                     return outputs;
                 }
             }
+            // 对状态进行再次置换
             state = self.permute::<H>(state);
         }
     }
