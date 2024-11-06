@@ -167,7 +167,7 @@ pub struct CircuitBuilder<F: RichField + Extendable<D>, const D: usize> {
     /// Generators used to generate the witness.
     pub generators: Vec<WitnessGeneratorRef<F, D>>,
 
-    constants_to_targets: HashMap<F, Target>,
+    pub constants_to_targets: HashMap<F, Target>,
     targets_to_constants: HashMap<Target, F>,
 
     /// Memoized results of `arithmetic` calls.
@@ -255,6 +255,13 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         println!("gates len is {:?}",self.gate_instances.len());
         for gate in &self.gates {
             println!("{:?}", gate);
+        }
+    }
+    //print_constants_to_targets
+    pub fn print_constants_to_targets(&self) {
+        println!("constants_to_targets len is {:?}",self.constants_to_targets.len());
+        for (key, value) in &self.constants_to_targets {
+            println!("key:{:?},value:{:?}", key, value);
         }
     }
 
