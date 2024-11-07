@@ -246,6 +246,14 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             println!("{:?}", generator.0);
         }
     }
+    //pub fn print_const_generators(&self)
+    pub fn print_const_generators(&self) {
+        println!("constant_generators len is {:?}",self.constant_generators.len());
+        for constant_generator in &self.constant_generators {
+            println!("{:?}", constant_generator);
+        }
+    }
+
     pub fn print_gate_instances(&self) {
         println!("gate_instances len is {:?}",self.gate_instances.len());
         for gate_instance in &self.gate_instances {
@@ -265,6 +273,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             println!("key:{:?},value:{:?}", key, value);
         }
     }
+
     //print_public_inputs
     pub fn print_public_inputs(&self) {
         println!("public_inputs len is {:?}",self.public_inputs.len());
@@ -1177,6 +1186,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let public_inputs_hash =
             self.hash_n_to_hash_no_pad::<C::InnerHasher>(self.public_inputs.clone());
         println!("Public Inputs Hash: {:?}", public_inputs_hash);
+        self.print_copy_constraints();
         let pi_gate = self.add_gate(PublicInputGate, vec![]);
 
         //self.print_gates();
@@ -1206,6 +1216,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         self.add_all_lookups();
 
         // Make sure we have enough constant generators. If not, add a `ConstantGate`.
+        self.print_const_generators();
+        self.print_constants_to_targets();
         while self.constants_to_targets.len() > self.constant_generators.len() {
             let len1= self.constants_to_targets.len();
             let len2 = self.constant_generators.len();
@@ -1217,6 +1229,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
                 vec![],
             );
         }
+        self.print_copy_constraints();
+        self.print_gates();
         let len1= self.constants_to_targets.len();
         let len2 = self.constant_generators.len();
         println!("constants_to_targets len1: {}, constant_generators len2: {}", len1, len2);
