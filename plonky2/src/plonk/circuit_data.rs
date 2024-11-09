@@ -62,27 +62,47 @@ use crate::util::timing::TimingTree;
 pub struct CircuitConfig {
     /// The number of wires available at each row. This corresponds to the "width" of the circuit,
     /// and consists in the sum of routed wires and advice wires.
+    /// 每行可用的线数。这对应于电路的“宽度”，包括路由线和建议线的总和。
     pub num_wires: usize,
+
     /// The number of routed wires, i.e. wires that will be involved in Plonk's permutation argument.
     /// This allows copy constraints, i.e. enforcing that two distant values in a circuit are equal.
     /// Non-routed wires are called advice wires.
+    /// 路由线的数量，即将参与Plonk置换参数的线。这允许复制约束，即强制电路中两个远距离的值相等。
+    /// 非路由线称为建议线。
     pub num_routed_wires: usize,
+
     /// The number of constants that can be used per gate. If a gate requires more constants than the config
-    /// allows, the [`CircuitBuilder`] will complain when trying to add this gate to its set of gates.
+    /// allows, the `CircuitBuilder` will complain when trying to add this gate to its set of gates.
+    /// 每个门可以使用的常量数量。如果一个门需要的常量超过配置允许的数量，`CircuitBuilder`在尝试将此门添加到其门集中时会报错。
     pub num_constants: usize,
+
     /// Whether to use a dedicated gate for base field arithmetic, rather than using a single gate
     /// for both base field and extension field arithmetic.
+    /// 是否使用专用门进行基域算术，而不是使用单个门进行基域和扩展域算术。
     pub use_base_arithmetic_gate: bool,
+
+    /// The number of security bits.
+    /// 安全bit的长度。
     pub security_bits: usize,
+
     /// The number of challenge points to generate, for IOPs that have soundness errors of (roughly)
     /// `degree / |F|`.
+    /// 生成的挑战点数量，对于具有（大致）`degree / |F|`健全性错误的IOP。
     pub num_challenges: usize,
+
     /// A boolean to activate the zero-knowledge property. When this is set to `false`, proofs *may*
     /// leak additional information.
+    /// 激活零知识属性的布尔值。当设置为`false`时，证明*可能*泄露额外的信息。
     pub zero_knowledge: bool,
+
     /// A cap on the quotient polynomial's degree factor. The actual degree factor is derived
     /// systematically, but will never exceed this value.
+    /// 商多项式的度数因子的上限。实际的度数因子是系统地推导出来的，但永远不会超过这个值。
     pub max_quotient_degree_factor: usize,
+
+    /// Configuration for the FRI (Fast Reed-Solomon Interactive Oracle Proof of Proximity) protocol.
+    /// FRI（快速Reed-Solomon交互式Oracle接近证明）协议的配置。
     pub fri_config: FriConfig,
 }
 
@@ -149,7 +169,7 @@ pub struct MockCircuitData<F: RichField + Extendable<D>, C: GenericConfig<D, F =
 }
 
 impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>
-    MockCircuitData<F, C, D>
+MockCircuitData<F, C, D>
 {
     pub fn generate_witness(&self, inputs: PartialWitness<F>) -> PartitionWitness<F> {
         generate_partial_witness::<F, C, D>(inputs, &self.prover_only, &self.common).unwrap()
@@ -165,7 +185,7 @@ pub struct CircuitData<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>,
 }
 
 impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>
-    CircuitData<F, C, D>
+CircuitData<F, C, D>
 {
     pub fn to_bytes(
         &self,
@@ -263,7 +283,7 @@ pub struct ProverCircuitData<
 }
 
 impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>
-    ProverCircuitData<F, C, D>
+ProverCircuitData<F, C, D>
 {
     pub fn to_bytes(
         &self,
@@ -306,7 +326,7 @@ pub struct VerifierCircuitData<
 }
 
 impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>
-    VerifierCircuitData<F, C, D>
+VerifierCircuitData<F, C, D>
 {
     pub fn to_bytes(&self, gate_serializer: &dyn GateSerializer<F, D>) -> IoResult<Vec<u8>> {
         let mut buffer = Vec::new();
@@ -368,7 +388,7 @@ pub struct ProverOnlyCircuitData<
 }
 
 impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>
-    ProverOnlyCircuitData<F, C, D>
+ProverOnlyCircuitData<F, C, D>
 {
     pub fn to_bytes(
         &self,
@@ -660,7 +680,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CommonCircuitData<F, D> {
             self.fri_quotient_polys(),
             self.fri_lookup_polys(),
         ]
-        .concat()
+            .concat()
     }
 }
 

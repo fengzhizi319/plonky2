@@ -831,7 +831,7 @@ impl Permuter for Target {
 }
 
 impl<T: Copy + Debug + Default + Eq + Permuter + Send + Sync> PlonkyPermutation<T>
-    for PoseidonPermutation<T>
+for PoseidonPermutation<T>
 {
     const RATE: usize = SPONGE_RATE;
     const WIDTH: usize = SPONGE_WIDTH;
@@ -897,23 +897,33 @@ impl<F: RichField> AlgebraicHasher<F> for PoseidonHash {
     where
         F: RichField + Extendable<D>,
     {
+        // 创建一个新的PoseidonGate类型的门
         let gate_type = PoseidonGate::<F, D>::new();
+        // 在电路构建器中添加这个门，并获取门的索引
         let gate = builder.add_gate(gate_type, vec![]);
 
+        // 获取交换线的索引
         let swap_wire = PoseidonGate::<F, D>::WIRE_SWAP;
+        // 创建一个目标对象，表示门中的交换线
         let swap_wire = Target::wire(gate, swap_wire);
+        // 将布尔目标swap连接到交换线
         builder.connect(swap.target, swap_wire);
 
-        // Route input wires.
+        // 获取输入的引用
         let inputs = inputs.as_ref();
+        // 遍历所有输入线
         for i in 0..SPONGE_WIDTH {
+            // 获取每个输入线的索引
             let in_wire = PoseidonGate::<F, D>::wire_input(i);
+            // 创建一个目标对象，表示门中的输入线
             let in_wire = Target::wire(gate, in_wire);
+            // 将输入连接到对应的输入线
             builder.connect(inputs[i], in_wire);
         }
 
-        // Collect output wires.
+        // 收集输出线
         Self::AlgebraicPermutation::new(
+            // 遍历所有输出线，创建目标对象并返回
             (0..SPONGE_WIDTH).map(|i| Target::wire(gate, PoseidonGate::<F, D>::wire_output(i))),
         )
     }

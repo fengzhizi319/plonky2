@@ -140,65 +140,92 @@ pub struct LookupWire {
 #[derive(Debug)]
 pub struct CircuitBuilder<F: RichField + Extendable<D>, const D: usize> {
     /// Circuit configuration to be used by this [`CircuitBuilder`].
+    /// 用于此 [`CircuitBuilder`] 的电路配置。
     pub config: CircuitConfig,
 
     /// A domain separator, which is included in the initial Fiat-Shamir seed. This is generally not
     /// needed, but can be used to ensure that proofs for one application are not valid for another.
     /// Defaults to the empty vector.
+    /// 域分隔符，包含在初始 Fiat-Shamir 种子中。通常不需要，但可以用于确保一个应用程序的证明对另一个应用程序无效。
+    /// 默认为空向量。
     domain_separator: Option<Vec<F>>,
 
     /// The types of gates used in this circuit.
+    /// 此电路中使用的门类型。
     pub gates: HashSet<GateRef<F, D>>,
 
     /// The concrete placement of each gate.
+    /// 每个门的具体位置。比gates额外多了constants常数
     pub gate_instances: Vec<GateInstance<F, D>>,
 
     /// Targets to be made public.
+    /// 要公开的目标。
     pub public_inputs: Vec<Target>,
 
     /// The next available index for a `VirtualTarget`.
+    /// `VirtualTarget` 的下一个可用索引。
     pub virtual_target_index: usize,
 
+    /// Copy constraints in the circuit.
+    /// 电路中的复制约束。
     pub copy_constraints: Vec<CopyConstraint>,
 
     /// A tree of named scopes, used for debugging.
+    /// 命名范围的树，用于调试。
     context_log: ContextTree,
 
     /// Generators used to generate the witness.
+    /// 用于生成见证的生成器。
     pub generators: Vec<WitnessGeneratorRef<F, D>>,
 
+    /// Mapping from constants to targets.
+    /// 从常量到目标的映射。
     pub constants_to_targets: HashMap<F, Target>,
+    /// Mapping from targets to constants.
+    /// 从目标到常量的映射。
     targets_to_constants: HashMap<Target, F>,
 
     /// Memoized results of `arithmetic` calls.
+    /// `arithmetic` 调用的记忆化结果。
     pub base_arithmetic_results: HashMap<BaseArithmeticOperation<F>, Target>,
 
     /// Memoized results of `arithmetic_extension` calls.
+    /// `arithmetic_extension` 调用的记忆化结果。
     pub(crate) arithmetic_results: HashMap<ExtensionArithmeticOperation<F, D>, ExtensionTarget<D>>,
 
     /// Map between gate type and the current gate of this type with available slots.
+    /// 门类型与此类型的当前门之间的映射，具有可用插槽。
     pub current_slots: HashMap<GateRef<F, D>, CurrentSlot<F, D>>,
 
     /// List of constant generators used to fill the constant wires.
+    /// 用于填充常量线的常量生成器列表。
     constant_generators: Vec<ConstantGenerator<F>>,
 
     /// Rows for each LUT: [`LookupWire`] contains: first [`LookupGate`], first and last
     /// [LookupTableGate](crate::gates::lookup_table::LookupTableGate).
+    /// 每个 LUT 的行：[`LookupWire`] 包含：第一个 [`LookupGate`]，第一个和最后一个
+    /// [LookupTableGate](crate::gates::lookup_table::LookupTableGate)。
     lookup_rows: Vec<LookupWire>,
 
     /// For each LUT index, vector of `(looking_in, looking_out)` pairs.
+    /// 对于每个 LUT 索引，`(looking_in, looking_out)` 对的向量。
     lut_to_lookups: Vec<Lookup>,
 
-    // Lookup tables in the form of `Vec<(input_value, output_value)>`.
+    /// Lookup tables in the form of `Vec<(input_value, output_value)>`.
+    /// 以 `Vec<(input_value, output_value)>` 形式的查找表。
     luts: Vec<LookupTable>,
 
     /// Optional common data. When it is `Some(goal_data)`, the `build` function panics if the resulting
     /// common data doesn't equal `goal_data`.
     /// This is used in cyclic recursion.
+    /// 可选的公共数据。当它是 `Some(goal_data)` 时，如果生成的公共数据不等于 `goal_data`，`build` 函数会触发 panic。
+    /// 这用于循环递归。
     pub(crate) goal_common_data: Option<CommonCircuitData<F, D>>,
 
     /// Optional verifier data that is registered as public inputs.
     /// This is used in cyclic recursion to hold the circuit's own verifier key.
+    /// 可选的验证器数据，注册为公共输入。
+    /// 这用于循环递归以保存电路自己的验证器密钥。
     pub(crate) verifier_data_public_input: Option<VerifierCircuitTarget>,
 }
 
@@ -494,42 +521,45 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
     /// Adds a gate to the circuit, and returns its index.
     pub fn add_gate<G: Gate<F, D>>(&mut self, gate_type: G, mut constants: Vec<F>) -> usize {
+        // 检查门的兼容性
         self.check_gate_compatibility(&gate_type);
 
+        // 确保常量的数量不超过门所需的常量数量
         assert!(
             constants.len() <= gate_type.num_constants(),
             "Too many constants."
         );
+        // 如果常量数量不足，则用零填充
         constants.resize(gate_type.num_constants(), F::ZERO);
 
+        // 获取当前门实例的数量，作为新门的行索引
         let row = self.gate_instances.len();
 
+        // 扩展常量生成器，添加额外的常量线
         self.constant_generators
             .extend(gate_type.extra_constant_wires().into_iter().map(
                 |(constant_index, wire_index)| ConstantGenerator {
-                    row,
-                    constant_index,
-                    wire_index,
-                    constant: F::ZERO, // Placeholder; will be replaced later.
+                    row, // 门的行索引
+                    constant_index, // 常量索引
+                    wire_index, // 线索引
+                    constant: F::ZERO, // 占位符常量，稍后替换
                 },
             ));
 
-        // Note that we can't immediately add this gate's generators, because the list of constants
-        // could be modified later, i.e. in the case of `ConstantGate`. We will add them later in
-        // `build` instead.
+        // 注意：我们不能立即添加这个门的生成器，因为常量列表可能会在之后被修改
+        // 我们将在 `build` 方法中添加它们
 
-        // Register this gate type if we haven't seen it before.
+        // 如果之前没有注册过这个门类型，则注册它
         let gate_ref = GateRef::new(gate_type);
-        //println!("self.gates:{:?}", self.gates);
         self.gates.insert(gate_ref.clone());
 
+        // 将新门实例添加到门实例列表中
         self.gate_instances.push(GateInstance {
-            gate_ref,
-            constants,
+            gate_ref, // 门引用
+            constants, // 常量列表
         });
-        // println!("self.gates:{:?}", self.gates);
-        // println!("self.gate_instances:{:?}", self.gate_instances);
 
+        // 返回新门的行索引
         row
     }
 
@@ -1204,13 +1234,13 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         {
             self.connect(hash_part, Target::wire(pi_gate, wire))
         }
-        //self.print_copy_constraints();
+        self.print_copy_constraints();
         println!("---------------");
         //self.print_copy_constraints();
         //self.print_generators();
         //self.generators初始化为"RandomValueGenerator"
         self.randomize_unused_pi_wires(pi_gate);
-        //self.print_generators();
+        self.print_generators();
 
         // Place LUT-related gates.
         self.add_all_lookups();
@@ -1218,6 +1248,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // Make sure we have enough constant generators. If not, add a `ConstantGate`.
         self.print_const_generators();
         self.print_constants_to_targets();
+        self.print_copy_constraints();
         while self.constants_to_targets.len() > self.constant_generators.len() {
             let len1= self.constants_to_targets.len();
             let len2 = self.constant_generators.len();
@@ -1229,13 +1260,16 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
                 vec![],
             );
         }
-        self.print_copy_constraints();
+        self.print_const_generators();
+        //self.print_copy_constraints();
         self.print_gates();
         let len1= self.constants_to_targets.len();
         let len2 = self.constant_generators.len();
         println!("constants_to_targets len1: {}, constant_generators len2: {}", len1, len2);
         // For each constant-target pair used in the circuit, use a constant generator to fill this target.
         println!("constants_to_targets: {:?}", self.constants_to_targets);
+        // constants_to_targets：{1: VirtualTarget { index: 2 }, 0: VirtualTarget { index: 3 }}
+        //self.print_generators();
         for ((c, t), mut const_gen) in self
             .constants_to_targets
             .clone()
@@ -1245,17 +1279,46 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             .sorted_by_key(|(c, _t)| c.to_canonical_u64())
             .zip(self.constant_generators.clone())
         {
+            //println!("c: {:?}, t: {:?}, const_gen: {:?}", c, t, const_gen);
+            // c: 0, t: VirtualTarget { index: 3 }, const_gen: ConstantGenerator { row: 3, constant_index: 0, wire_index: 0, constant: 0 }
+            //self.gate_instances[3].constants[0] = 0;
+            //self.connect(Target::wire(3, 0), VirtualTarget { index: 3 });
+            //const_gen.set_constant(0);
+            //self.add_simple_generator(const_gen);
+
+            // c: 1, t: VirtualTarget { index: 2 }, const_gen: ConstantGenerator { row: 3, constant_index: 1, wire_index: 1, constant: 0 }
+            //self.gate_instances[3].constants[1] = 1;
+            //self.connect(Target::wire(3, 1), VirtualTarget { index: 2 });
+            //const_gen.set_constant(1);
+            //self.add_simple_generator(const_gen);
+
+
             // Set the constant in the constant polynomial.
+            self.print_gate_instances();
             self.gate_instances[const_gen.row].constants[const_gen.constant_index] = c;
+            self.print_gate_instances();
             // Generate a copy between the target and the routable wire.
             self.connect(Target::wire(const_gen.row, const_gen.wire_index), t);
             // Set the constant in the generator (it's initially set with a dummy value).
+            //println!("const_gen({:?})", const_gen);
             const_gen.set_constant(c);
+            println!("const_gen({:?})", const_gen);
+            //self.print_generators();
             self.add_simple_generator(const_gen);
+            //self.print_generators();
         }
-        self.print_gate_instances();
+        //self.print_copy_constraints();
+        //self.print_generators();
+        // self.print_gates();
+        // self.print_gate_instances();
         /*
-        GateInstance { gate_ref: ArithmeticGate { num_ops: 20 }, constants: [1, 1] }
+        gates len is 4
+        PoseidonGate(PhantomData<plonky2_field::goldilocks_field::GoldilocksField>)<WIDTH=12>
+        ArithmeticGate { num_ops: 20 }
+        PublicInputGate
+        ConstantGate { num_consts: 2 }
+
+        gate_instances len is 4
         GateInstance { gate_ref: ArithmeticGate { num_ops: 20 }, constants: [1, 1] }
         GateInstance { gate_ref: PoseidonGate(PhantomData<plonky2_field::goldilocks_field::GoldilocksField>)<WIDTH=12>, constants: [] }
         GateInstance { gate_ref: PublicInputGate, constants: [] }
@@ -1286,7 +1349,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             num_query_rounds: 28
         },
          hiding: false,
-         degree_bits: 3,
+         degree_bits: 2,
          reduction_arity_bits: [] }
        */
         let quotient_degree_factor = self.config.max_quotient_degree_factor;//8
@@ -1299,8 +1362,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
         let (mut constant_vecs, selectors_info) =
             selector_polynomials(&gates, &self.gate_instances, quotient_degree_factor + 1);
-        println!("constant_vecs: {:?}", constant_vecs);
-        println!("selectors_info: {:?}", selectors_info);
+        // constant_vecs: [PolynomialValues { values: [2, 4294967295, 1, 0] }, PolynomialValues { values: [4294967295, 3, 4294967295, 4294967295] }]
+        // selectors_info: SelectorsInfo { selector_indices: [0, 0, 0, 1], groups: [0..3, 3..4] }
 
         // Get the lookup selectors.
         let num_lookup_selectors = if num_luts != 0 {

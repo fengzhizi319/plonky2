@@ -54,7 +54,7 @@ fn main() -> Result<()> {
     builder.register_public_input(initial_a);
     builder.register_public_input(initial_b);
     builder.register_public_input(cur_target);
-    //builder.print_public_inputs();
+    builder.print_public_inputs();
 
     // Provide initial values.
     let mut pw = PartialWitness::new();
