@@ -105,7 +105,7 @@ pub fn generate_partial_witness<
 
 /// A generator participates in the generation of the witness.
 pub trait WitnessGenerator<F: RichField + Extendable<D>, const D: usize>:
-    'static + Send + Sync + Debug
+'static + Send + Sync + Debug
 {
     fn id(&self) -> String;
 
@@ -204,7 +204,7 @@ impl<F: Field> GeneratedValues<F> {
 
 /// A generator which runs once after a list of dependencies is present in the witness.
 pub trait SimpleGenerator<F: RichField + Extendable<D>, const D: usize>:
-    'static + Send + Sync + Debug
+'static + Send + Sync + Debug
 {
     fn id(&self) -> String;
 
@@ -244,7 +244,7 @@ pub struct SimpleGeneratorAdapter<
 }
 
 impl<F: RichField + Extendable<D>, SG: SimpleGenerator<F, D>, const D: usize> WitnessGenerator<F, D>
-    for SimpleGeneratorAdapter<F, SG, D>
+for SimpleGeneratorAdapter<F, SG, D>
 {
     fn id(&self) -> String {
         self.inner.id()
@@ -389,12 +389,24 @@ impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F, D> for Non
     }
 }
 
-/// Generator used to fill an extra constant.
+/// A generator used to fill an extra constant.
+/// 用于填充额外常量的生成器。
 #[derive(Debug, Clone, Default)]
 pub struct ConstantGenerator<F: Field> {
+    /// The row index in the circuit where this constant is used.
+    /// 此常量在电路中使用的行索引。
     pub row: usize,
+
+    /// The index of the constant within the gate.
+    /// 门内常量的索引。
     pub constant_index: usize,
+
+    /// The wire index in the circuit where this constant is connected.
+    /// 此常量连接到电路中的线索引。
     pub wire_index: usize,
+
+    /// The value of the constant.
+    /// 常量的值。
     pub constant: F,
 }
 

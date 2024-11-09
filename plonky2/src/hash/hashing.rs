@@ -34,7 +34,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
     ) -> Vec<Target> {
         // 获取零值
         let zero = self.zero();
-        // 初始化状态，使用零值填充,WIDTH=12,H::AlgebraicPermutation::WIDTH=8
+        // 初始化状态，使用零值填充，H::AlgebraicPermutation::WIDTH=8
         let mut state = H::AlgebraicPermutation::new(core::iter::repeat(zero));
          //print_state
          println!("state1:{:?}",state);
@@ -51,11 +51,11 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             state.set_from_slice(input_chunk, 0);
             //println!("state2:{:?}",state);
             //self.print_gates();
-            //self.print_copy_constraints();
+            self.print_copy_constraints();
             // 对状态进行置换，新增加一个PoseidonGate进行copy约束，copy约束增加到copy_constraints中
             state = self.permute::<H>(state);
             //self.print_gates();
-            //self.print_copy_constraints();
+            self.print_copy_constraints();
             //println!("state3:{:?}",state);
         }
 
