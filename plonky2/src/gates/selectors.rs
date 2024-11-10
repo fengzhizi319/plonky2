@@ -126,6 +126,18 @@ pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>
     instances: &[GateInstance<F, D>], // 门实例数组
     max_degree: usize, // 最大度数
 ) -> (Vec<PolynomialValues<F>>, SelectorsInfo) {
+    /*
+    [ConstantGate { num_consts: 2 },
+    PublicInputGate,
+    ArithmeticGate { num_ops: 20 },
+    PoseidonGate(PhantomData<plonky2_field::goldilocks_field::GoldilocksField>)<WIDTH=12>]
+     */
+    /*
+    GateInstance { gate_ref: ArithmeticGate { num_ops: 20 }, constants: [1, 1] }
+    GateInstance { gate_ref: PoseidonGate(PhantomData<plonky2_field::goldilocks_field::GoldilocksField>)<WIDTH=12>, constants: [] }
+    GateInstance { gate_ref: PublicInputGate, constants: [] }
+    GateInstance { gate_ref: ConstantGate { num_consts: 2 }, constants: [0, 1] }
+     */
     let n = instances.len(); // 门实例的数量
     let num_gates = gates.len(); // 门的数量
     let max_gate_degree = gates.last().expect("No gates?").0.degree(); // 获取最后一个门的度数

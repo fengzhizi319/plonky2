@@ -1359,6 +1359,19 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         //gates 向量将首先按门的度数排序，如果度数相同，则按门的 ID 排序
         gates.sort_unstable_by_key(|g| (g.0.degree(), g.0.id()));
         println!("after gates: {:?}", gates);
+        /*
+        [ConstantGate { num_consts: 2 },
+        PublicInputGate,
+        ArithmeticGate { num_ops: 20 },
+        PoseidonGate(PhantomData<plonky2_field::goldilocks_field::GoldilocksField>)<WIDTH=12>]
+         */
+        /*
+        GateInstance { gate_ref: ArithmeticGate { num_ops: 20 }, constants: [1, 1] }
+        GateInstance { gate_ref: PoseidonGate(PhantomData<plonky2_field::goldilocks_field::GoldilocksField>)<WIDTH=12>, constants: [] }
+        GateInstance { gate_ref: PublicInputGate, constants: [] }
+        GateInstance { gate_ref: ConstantGate { num_consts: 2 }, constants: [0, 1] }
+         */
+        self.print_gate_instances();
 
         let (mut constant_vecs, selectors_info) =
             selector_polynomials(&gates, &self.gate_instances, quotient_degree_factor + 1);
