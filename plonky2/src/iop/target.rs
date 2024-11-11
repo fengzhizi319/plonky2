@@ -52,6 +52,7 @@ impl Target {
         range.map(|i| Self::wire(row, i)).collect()
     }
 
+    //计算 Target 在一个二维网格中的索引
     pub fn index(&self, num_wires: usize, degree: usize) -> usize {
         match self {
             Target::Wire(Wire { row, column }) => row * num_wires + column,
@@ -60,6 +61,8 @@ impl Target {
     }
 
     /// Conversion to an `ExtensionTarget`.
+    /// Target 转换为 ExtensionTarget，并返回一个包含 D 个元素的 ExtensionTarget 实例，
+    /// 其中第一个元素是 self，其余元素是 zero
     pub const fn to_ext_target<const D: usize>(self, zero: Self) -> ExtensionTarget<D> {
         let mut arr = [zero; D];
         arr[0] = self;

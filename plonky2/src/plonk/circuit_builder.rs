@@ -1119,6 +1119,9 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
     fn sigma_vecs(&self, k_is: &[F], subgroup: &[F]) -> (Vec<PolynomialValues<F>>, Forest) {
         // 获取门实例的数量，即电路的度数
+        //print inputs
+        // println!("k_is:{:?}", k_is);
+        // println!("subgroup:{:?}", subgroup);
         let degree = self.gate_instances.len();
         // 计算度数的对数值
         let degree_log = log2_strict(degree);
@@ -1131,10 +1134,11 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             degree, // 电路的度数
             self.virtual_target_index, // 虚拟目标的索引 4
         );
-        println!("virtual_target_index:{:?}", self.virtual_target_index);
-        println!("forest:{:?}", forest);
+        // println!("virtual_target_index:{:?}", self.virtual_target_index);
+        // println!("forest:{:?}", forest);
 
         // 遍历所有门实例
+        // forest:Forest { parents: [0, 1, …, 538, 539], num_wires: 135, num_routed_wires: 80, degree: 4 }
         for gate in 0..degree {
             // 遍历每个GateInstance中的所有输入线，config.num_wires=135
             for input in 0..config.num_wires {
@@ -1142,31 +1146,39 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
                 let wire1 = Wire { row: gate, column: input };
                 forest.add(Target::Wire(wire1));
                 //println!(forest)
-                println!("forest:{:?}", forest);
+                //println!("forest:{:?}", forest);
                 // forest.add(Target::Wire(Wire {
                 //     row: gate, // 当前门实例的行索引
                 //     column: input, // 当前输入线的列索引
                 // }));
             }
+            //println!("forest:{:?}", forest);
+            // forest:Forest { parents: [0, 1, …, 538, 539], num_wires: 135, num_routed_wires: 80, degree: 4 }
         }
+        //println!("forest:{:?}", forest);
 
-        // 遍历所有virtual_target
+        // 遍历所有virtual_target，长度为4
         for index in 0..self.virtual_target_index {
             // 将每个virtual_target添加到森林中
             forest.add(Target::VirtualTarget { index });
         }
+        //println!("forest:{:?}", forest);
 
-        // 遍历所有复制约束
+        // 遍历所有复制约束,合并虚拟线VirtualTarget跟实体线wire
         for &CopyConstraint { pair: (a, b), .. } in &self.copy_constraints {
             // 合并复制约束中的两个目标
+            //println!("a:{:?}b:{:?}", a,b);
             forest.merge(a, b);
         }
+        //println!("merge forest:{:?}", forest);
 
         // 压缩森林中的路径
         forest.compress_paths();
+        //println!("compress_paths forest:{:?}", forest);
 
-        // 获取线分区
+        // 相同拷贝约束的wire都指向同一个parent，即被放入同一个vec中
         let wire_partition = forest.wire_partition();
+        //println!("wire_partition:{:?}", wire_partition);
         (
             // 获取 sigma 多项式
             wire_partition.get_sigma_polys(degree_log, k_is, subgroup),
@@ -1247,7 +1259,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         //新增加一个PoseidonGate，并将public_inputs与PoseidonGate连接
         let public_inputs_hash =
             self.hash_n_to_hash_no_pad::<C::InnerHasher>(self.public_inputs.clone());
-        println!("Public Inputs Hash: {:?}", public_inputs_hash);
+        //println!("Public Inputs Hash: {:?}", public_inputs_hash);
         self.print_copy_constraints();
         let pi_gate = self.add_gate(PublicInputGate, vec![]);
 
@@ -1266,25 +1278,25 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         {
             self.connect(hash_part, Target::wire(pi_gate, wire))
         }
-        self.print_copy_constraints();
-        println!("---------------");
+        //self.print_copy_constraints();
+        //println!("---------------");
         //self.print_copy_constraints();
         //self.print_generators();
         //self.generators初始化为"RandomValueGenerator"
         self.randomize_unused_pi_wires(pi_gate);
-        self.print_generators();
+        //self.print_generators();
 
         // Place LUT-related gates.
         self.add_all_lookups();
 
         // Make sure we have enough constant generators. If not, add a `ConstantGate`.
-        self.print_const_generators();
-        self.print_constants_to_targets();
-        self.print_copy_constraints();
+        // self.print_const_generators();
+        // self.print_constants_to_targets();
+        // self.print_copy_constraints();
         while self.constants_to_targets.len() > self.constant_generators.len() {
             let len1= self.constants_to_targets.len();
             let len2 = self.constant_generators.len();
-            println!("constants_to_targets len1: {}, constant_generators len2: {}", len1, len2);
+            //println!("constants_to_targets len1: {}, constant_generators len2: {}", len1, len2);
             self.add_gate(
                 ConstantGate {
                     num_consts: self.config.num_constants,
@@ -1292,14 +1304,14 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
                 vec![],
             );
         }
-        self.print_const_generators();
+        //self.print_const_generators();
         //self.print_copy_constraints();
-        self.print_gates();
+        //self.print_gates();
         let len1= self.constants_to_targets.len();
         let len2 = self.constant_generators.len();
-        println!("constants_to_targets len1: {}, constant_generators len2: {}", len1, len2);
+        // println!("constants_to_targets len1: {}, constant_generators len2: {}", len1, len2);
         // For each constant-target pair used in the circuit, use a constant generator to fill this target.
-        println!("constants_to_targets: {:?}", self.constants_to_targets);
+        //println!("constants_to_targets: {:?}", self.constants_to_targets);
         // constants_to_targets：{1: VirtualTarget { index: 2 }, 0: VirtualTarget { index: 3 }}
         //self.print_generators();
         for ((c, t), mut const_gen) in self
@@ -1326,15 +1338,15 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
 
             // Set the constant in the constant polynomial.
-            self.print_gate_instances();
+            //self.print_gate_instances();
             self.gate_instances[const_gen.row].constants[const_gen.constant_index] = c;
-            self.print_gate_instances();
+            //self.print_gate_instances();
             // Generate a copy between the target and the routable wire.
             self.connect(Target::wire(const_gen.row, const_gen.wire_index), t);
             // Set the constant in the generator (it's initially set with a dummy value).
             //println!("const_gen({:?})", const_gen);
             const_gen.set_constant(c);
-            println!("const_gen({:?})", const_gen);
+            //println!("const_gen({:?})", const_gen);
             //self.print_generators();
             self.add_simple_generator(const_gen);
             //self.print_generators();
@@ -1369,7 +1381,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             fri_params.total_arities() <= degree_bits + rate_bits - cap_height,
             "FRI total reduction arity is too large.",
         );
-        println!("fri_params: {:?}", fri_params);
+        //println!("fri_params: {:?}", fri_params);
         /*
         FriParams {
         config:
@@ -1387,10 +1399,10 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let quotient_degree_factor = self.config.max_quotient_degree_factor;//8
         let mut gates = self.gates.iter().cloned().collect::<Vec<_>>();
         // Gates need to be sorted by their degrees (and ID to make the ordering deterministic) to compute the selector polynomials.
-        println!("gates: {:?}", gates);
+        //println!("gates: {:?}", gates);
         //gates 向量将首先按门的degree排序，如果度数相同，则按门的 ID 排序
         gates.sort_unstable_by_key(|g| (g.0.degree(), g.0.id()));
-        println!("after gates: {:?}", gates);
+        //println!("after gates: {:?}", gates);
         /*
         [ConstantGate { num_consts: 2 },
         PublicInputGate,
@@ -1403,7 +1415,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         GateInstance { gate_ref: PublicInputGate, constants: [] }
         GateInstance { gate_ref: ConstantGate { num_consts: 2 }, constants: [0, 1] }
          */
-        self.print_gate_instances();
+        //self.print_gate_instances();
         //主要作用是将按照degree进行排序后的gates进行分组，PolynomialValues表示原始gate门在排序后的Gates中的索引，以及在多组中属于第几组。
         let (mut constant_vecs, selectors_info) =
             selector_polynomials(&gates, &self.gate_instances, quotient_degree_factor + 1);
@@ -1425,8 +1437,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         };
         // println!("constant_vecs: {:?}", constant_vecs);
         // println!("selectors_info: {:?}", selectors_info);
-        println!("self.constant_polys(): {:?}", self.constant_polys());
-        println!("constant_vecs: {:?}", constant_vecs);
+        //println!("self.constant_polys(): {:?}", self.constant_polys());
+        //println!("constant_vecs: {:?}", constant_vecs);
         //[PolynomialValues { values: [2, 0xFFFFFFFF, 1, 0] },
         // PolynomialValues { values: [0xFFFFFFFF, 3, 0xFFFFFFFF, 0xFFFFFFFF] },
         // PolynomialValues { values: [1, 0, 0, 0] },
@@ -1438,11 +1450,11 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
         //生成子群，群的阶为2^degree_bits
         let subgroup = F::two_adic_subgroup(degree_bits);
-        println!("subgroup: {:?}", subgroup);
+        //println!("subgroup: {:?}", subgroup);
 
         //计算陪集的移位生成元，即a*H中的a，H为子集.所以通过a即可得到子集H的全部陪集，degree=4，即门的个数，因此子群的阶为4
         //只需要self.config.num_routed_wires个陪集即可。self.config.num_routed_wires=80
-        println!("degree_bits: {}, self.config.num_routed_wires: {}", degree_bits, self.config.num_routed_wires);
+        //println!("degree_bits: {}, self.config.num_routed_wires: {}", degree_bits, self.config.num_routed_wires);
         let k_is = get_unique_coset_shifts(degree, self.config.num_routed_wires);
 
         let (sigma_vecs, forest) = timed!(
