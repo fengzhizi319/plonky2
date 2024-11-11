@@ -214,9 +214,14 @@ pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>
     // 初始化多项式
     let mut polynomials = vec![PolynomialValues::zero(n); groups.len()];
     for (j, g) in instances.iter().enumerate() {
-        //解构 GateInstance，获取 gate_ref
+        //解构 GateInstance，获取 gate_ref字段的值。
         //使用模式匹配从 g 中提取 gate_ref 字段的值，并将其绑定到变量 gate_ref 上。.. 表示忽略 GateInstance 结构体中的其他字段。
+        //let GateInstance { gate_ref, .. } = g;
         let GateInstance { gate_ref, .. } = g;
+        //获取 gate_ref 的 ID 在 gates 数组中的索引 i
+        let id=gate_ref.0.id();
+        println!("id:{:?}",id);
+
         //获取 gate_ref 的 ID 在 gates 数组中的索引 i
         let i = index(gate_ref.0.id());
         //获取门 i 所在的组的索引 gr

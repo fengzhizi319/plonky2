@@ -1070,7 +1070,31 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             .map(|g| g.0.num_constants())
             .max()
             .unwrap();
+        // 转置并收集多项式值
 
+        //[[1, 1], [0, 0], [0, 0], [0, 1]]
+        let x1=&self
+            .gate_instances
+            .iter()
+            .map(|g| {
+                // 克隆当前门的常量
+                let mut consts = g.constants.clone();
+                // 将常量数量调整为最大常量数量，不足的部分用 F::ZERO 填充
+                consts.resize(max_constants, F::ZERO);
+                consts
+            })
+            .collect::<Vec<_>>();
+
+        //[[1, 0, 0, 0], [1, 0, 0, 1]]
+        let x2=transpose(x1);
+
+        let x3= x2.into_iter()
+            // 将每个常量向量转换为 PolynomialValues
+            .map(PolynomialValues::new)
+            .collect();
+        println!("constant_polys:{:?}", x3);
+        x3
+        /*
         // 转置并收集多项式值
         transpose(
             &self
@@ -1089,6 +1113,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             // 将每个常量向量转换为 PolynomialValues
             .map(PolynomialValues::new)
             .collect()
+
+         */
     }
 
     fn sigma_vecs(&self, k_is: &[F], subgroup: &[F]) -> (Vec<PolynomialValues<F>>, Forest) {
@@ -1356,7 +1382,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let mut gates = self.gates.iter().cloned().collect::<Vec<_>>();
         // Gates need to be sorted by their degrees (and ID to make the ordering deterministic) to compute the selector polynomials.
         println!("gates: {:?}", gates);
-        //gates 向量将首先按门的度数排序，如果度数相同，则按门的 ID 排序
+        //gates 向量将首先按门的degree排序，如果度数相同，则按门的 ID 排序
         gates.sort_unstable_by_key(|g| (g.0.degree(), g.0.id()));
         println!("after gates: {:?}", gates);
         /*
@@ -1372,10 +1398,11 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         GateInstance { gate_ref: ConstantGate { num_consts: 2 }, constants: [0, 1] }
          */
         self.print_gate_instances();
-
+        //主要作用是将按照degree进行排序后的gates进行分组，PolynomialValues表示原始gate门在排序后的Gates中的索引，以及在多组中属于第几组。
         let (mut constant_vecs, selectors_info) =
             selector_polynomials(&gates, &self.gate_instances, quotient_degree_factor + 1);
-        // constant_vecs: [PolynomialValues { values: [2, 4294967295, 1, 0] }, PolynomialValues { values: [4294967295, 3, 4294967295, 4294967295] }]
+        // constant_vecs: [PolynomialValues { values: [2, 0xFFFFFFFF, 1, 0] }, PolynomialValues { values: [0xFFFFFFFF, 3, 0xFFFFFFFF, 0xFFFFFFFF] }]
+        //selector_indices: [0, 0, 0, 1]
 
 
         // Get the lookup selectors.
@@ -1394,7 +1421,10 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // println!("selectors_info: {:?}", selectors_info);
         println!("self.constant_polys(): {:?}", self.constant_polys());
         println!("constant_vecs: {:?}", constant_vecs);
-
+        //[PolynomialValues { values: [2, 0xFFFFFFFF, 1, 0] },
+        // PolynomialValues { values: [0xFFFFFFFF, 3, 0xFFFFFFFF, 0xFFFFFFFF] },
+        // PolynomialValues { values: [1, 0, 0, 0] },
+        // PolynomialValues { values: [1, 0, 0, 1] }
         constant_vecs.extend(self.constant_polys());
 
         println!("constant_vecs: {:?}", constant_vecs);
