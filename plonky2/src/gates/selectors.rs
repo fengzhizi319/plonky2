@@ -206,7 +206,7 @@ pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>
 
     // `selector_indices[i] = j` 表示第 i 个门使用第 j 个选择器多项式。
     let selector_indices = (0..num_gates).map(group).collect();
-    //// selectors_info: SelectorsInfo { selector_indices: [0, 0, 0, 1], groups: [0..3, 3..4] }
+    //// selectors_info: SelectorsInfo { selector_indices: [0, 0, 0, 1]
 
     // 占位符值，表示门不使用选择器多项式。
     let unused = F::from_canonical_usize(UNUSED_SELECTOR);//0xFFFFFFFF
@@ -214,13 +214,20 @@ pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>
     // 初始化多项式
     let mut polynomials = vec![PolynomialValues::zero(n); groups.len()];
     for (j, g) in instances.iter().enumerate() {
+        //解构 GateInstance，获取 gate_ref
+        //使用模式匹配从 g 中提取 gate_ref 字段的值，并将其绑定到变量 gate_ref 上。.. 表示忽略 GateInstance 结构体中的其他字段。
         let GateInstance { gate_ref, .. } = g;
+        //获取 gate_ref 的 ID 在 gates 数组中的索引 i
         let i = index(gate_ref.0.id());
+        //获取门 i 所在的组的索引 gr
         let gr = group(i);
         for g in 0..groups.len() {
+            //如果当前组的索引 g 等于门所在的组的索引 gr
             polynomials[g].values[j] = if g == gr {
+                //将门的索引 i 转换为 F 类型，并赋值给 polynomials[g].values[j]
                 F::from_canonical_usize(i)
             } else {
+                //将占位符值 unused 赋值给 polynomials[g].values[j]。
                 unused
             };
         }
