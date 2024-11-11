@@ -1135,6 +1135,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         println!("forest:{:?}", forest);
 
         // 遍历所有门实例
+        // forest:Forest { parents: [0, 1, …, 538, 539], num_wires: 135, num_routed_wires: 80, degree: 4 }
         for gate in 0..degree {
             // 遍历每个GateInstance中的所有输入线，config.num_wires=135
             for input in 0..config.num_wires {
@@ -1142,12 +1143,14 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
                 let wire1 = Wire { row: gate, column: input };
                 forest.add(Target::Wire(wire1));
                 //println!(forest)
-                println!("forest:{:?}", forest);
+                //println!("forest:{:?}", forest);
                 // forest.add(Target::Wire(Wire {
                 //     row: gate, // 当前门实例的行索引
                 //     column: input, // 当前输入线的列索引
                 // }));
             }
+            //println!("forest:{:?}", forest);
+            // forest:Forest { parents: [0, 1, …, 538, 539], num_wires: 135, num_routed_wires: 80, degree: 4 }
         }
 
         // 遍历所有virtual_target

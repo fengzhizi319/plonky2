@@ -43,6 +43,8 @@ impl Forest {
     /// Add a new partition with a single member.
     pub fn add(&mut self, t: Target) {
         let index = self.parents.len();
+        //println!(self.target_index(t))
+        //println!("self.target_index(t):{:?}",self.target_index(t));
         debug_assert_eq!(self.target_index(t), index);
         self.parents.push(index);
     }
