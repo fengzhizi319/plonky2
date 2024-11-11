@@ -5,8 +5,7 @@ use num::bigint::BigUint;
 use crate::types::Field;
 
 /// Finds a set of shifts that result in unique cosets for the multiplicative subgroup of size
-/// `2^subgroup_bits`.
-///  查找num_shifts个值a，这些a*H会生成大小为 `2^subgroup_bits` 的乘法子群H的唯一陪集。
+///  查找num_shifts个值a，这些a*H会生成阶为 subgroup_size 的乘法子群H的唯一陪集。
 /// 计算陪集的移位生成元，即a*H中的a，H为子集.所以通过a即可得到子集H的全部陪集
 pub fn get_unique_coset_shifts<F: Field>(subgroup_size: usize, num_shifts: usize) -> Vec<F> {
     // From Lagrange's theorem.根据拉格朗日定理计算陪集的数量。

@@ -10,6 +10,7 @@ use crate::iop::target::Target;
 use crate::iop::wire::Wire;
 
 /// Disjoint Set Forest data-structure following <https://en.wikipedia.org/wiki/Disjoint-set_data_structure>.
+#[derive(Debug)]
 pub struct Forest {
     /// A map of parent pointers, stored as indices.
     pub(crate) parents: Vec<usize>,

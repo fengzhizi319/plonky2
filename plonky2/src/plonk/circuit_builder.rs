@@ -532,7 +532,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // 如果常量数量不足，则用零填充
         constants.resize(gate_type.num_constants(), F::ZERO);
 
-        // 获取当前门实例的数量，作为新门的行索引
+        // 获取当前gate_instances的数量，作为新门的行索引
         let row = self.gate_instances.len();
 
         // 扩展常量生成器，添加额外的常量线
@@ -553,7 +553,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let gate_ref = GateRef::new(gate_type);
         self.gates.insert(gate_ref.clone());
 
-        // 将新门实例添加到门实例列表中
+        // 将新GateInstance添加到门实例列表中
         self.gate_instances.push(GateInstance {
             gate_ref, // 门引用
             constants, // 常量列表
@@ -837,7 +837,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         } else {
             self.luts.push(lut);
             self.lut_to_lookups.push(vec![]);
-            assert!(self.luts.len() == self.lut_to_lookups.len());
+            assert_eq!(self.luts.len(), self.lut_to_lookups.len());
             self.luts.len() - 1
         }
     }
@@ -863,7 +863,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         } else {
             self.luts.push(lut);
             self.lut_to_lookups.push(vec![]);
-            assert!(self.luts.len() == self.lut_to_lookups.len());
+            assert_eq!(self.luts.len(), self.lut_to_lookups.len());
             self.luts.len() - 1
         }
     }
@@ -876,7 +876,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         } else {
             self.luts.push(table);
             self.lut_to_lookups.push(vec![]);
-            assert!(self.luts.len() == self.lut_to_lookups.len());
+            assert_eq!(self.luts.len(), self.lut_to_lookups.len());
             self.luts.len() - 1
         }
     }
@@ -1126,27 +1126,33 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let config = &self.config;
         // 创建一个新的森林结构，用于管理电路中的目标
         let mut forest = Forest::new(
-            config.num_wires, // 电路中的线数量
-            config.num_routed_wires, // 电路中路由线的数量
+            config.num_wires, // 电路中的线数量 135
+            config.num_routed_wires, // 电路中路由线的数量，80
             degree, // 电路的度数
-            self.virtual_target_index, // 虚拟目标的索引
+            self.virtual_target_index, // 虚拟目标的索引 4
         );
+        println!("virtual_target_index:{:?}", self.virtual_target_index);
+        println!("forest:{:?}", forest);
 
         // 遍历所有门实例
         for gate in 0..degree {
-            // 遍历每个门实例中的所有输入线
+            // 遍历每个GateInstance中的所有输入线，config.num_wires=135
             for input in 0..config.num_wires {
                 // 将每个输入线添加到森林中
-                forest.add(Target::Wire(Wire {
-                    row: gate, // 当前门实例的行索引
-                    column: input, // 当前输入线的列索引
-                }));
+                let wire1 = Wire { row: gate, column: input };
+                forest.add(Target::Wire(wire1));
+                //println!(forest)
+                println!("forest:{:?}", forest);
+                // forest.add(Target::Wire(Wire {
+                //     row: gate, // 当前门实例的行索引
+                //     column: input, // 当前输入线的列索引
+                // }));
             }
         }
 
-        // 遍历所有虚拟目标
+        // 遍历所有virtual_target
         for index in 0..self.virtual_target_index {
-            // 将每个虚拟目���添加到森林中
+            // 将每个virtual_target添加到森林中
             forest.add(Target::VirtualTarget { index });
         }
 
@@ -1177,7 +1183,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // Print total count of each gate type.
         debug!("Total gate counts:");
         for gate in self.gates.iter().cloned() {
-            // 计算每种门类型的实例数量
+            // 计算每种gate类型的实例数量
             let count = self
                 .gate_instances
                 .iter()
@@ -1427,14 +1433,18 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // PolynomialValues { values: [1, 0, 0, 1] }
         constant_vecs.extend(self.constant_polys());
 
-        println!("constant_vecs: {:?}", constant_vecs);
+        //println!("constant_vecs: {:?}", constant_vecs);
         let num_constants = constant_vecs.len();
 
+        //生成子群，群的阶为2^degree_bits
         let subgroup = F::two_adic_subgroup(degree_bits);
         println!("subgroup: {:?}", subgroup);
 
-        //计算陪集的移位生成元，即a*H中的a，H为子集.所以通过a即可得到子集H的全部陪集
+        //计算陪集的移位生成元，即a*H中的a，H为子集.所以通过a即可得到子集H的全部陪集，degree=4，即门的个数，因此子群的阶为4
+        //只需要self.config.num_routed_wires个陪集即可。self.config.num_routed_wires=80
+        println!("degree_bits: {}, self.config.num_routed_wires: {}", degree_bits, self.config.num_routed_wires);
         let k_is = get_unique_coset_shifts(degree, self.config.num_routed_wires);
+
         let (sigma_vecs, forest) = timed!(
             timing,
             "generate sigma polynomials",
