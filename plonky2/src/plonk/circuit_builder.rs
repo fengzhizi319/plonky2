@@ -1376,7 +1376,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let (mut constant_vecs, selectors_info) =
             selector_polynomials(&gates, &self.gate_instances, quotient_degree_factor + 1);
         // constant_vecs: [PolynomialValues { values: [2, 4294967295, 1, 0] }, PolynomialValues { values: [4294967295, 3, 4294967295, 4294967295] }]
-        // selectors_info: SelectorsInfo { selector_indices: [0, 0, 0, 1], groups: [0..3, 3..4] }
+
 
         // Get the lookup selectors.
         let num_lookup_selectors = if num_luts != 0 {

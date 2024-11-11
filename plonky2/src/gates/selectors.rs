@@ -140,9 +140,16 @@ pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>
      */
     let n = instances.len(); // 门实例的数量
     let num_gates = gates.len(); // 门的数量
-    let max_gate_degree = gates.last().expect("No gates?").0.degree(); // 获取最后一个门的度数
+    let max_gate_degree = gates.last().expect("No gates?").0.degree(); // 获取最后一个门的度数 7
 
     // 获取门的索引
+    //这行代码定义了一个闭包（匿名函数），用于根据门的 id 获取门在 gates 数组中的位置。
+    /*
+    let index = |id| ...：定义一个名为 index 的闭包，接受一个参数 id。
+    gates.iter()：对 gates 数组进行迭代。
+    .position(|g| g.0.id() == id)：找到第一个满足条件的元素的位置，条件是 g.0.id() 等于传入的 id。
+    .unwrap()：获取 position 返回的 Option 中的值，如果没有找到匹配的元素则会引发panic。
+     */
     let index = |id| gates.iter().position(|g| g.0.id() == id).unwrap();
 
     // 特殊情况：如果我们只需要一个选择器多项式
@@ -172,26 +179,37 @@ pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>
         );
     }
 
-    // 贪心构造组
+    // 贪心构造组，贪心地将门分组，以便每组的度数和不超过最大度数 max_degree。具体语法解释如下：
     let mut groups = Vec::new();
     let mut start = 0;
     while start < num_gates {
         let mut size = 0;
+        /*
+        这是一个嵌套循环，用于在不超过最大度数的情况下增加组的大小。
+        start + size < gates.len()：确保当前组的大小不超过门的总数。
+        size + gates[start + size].0.degree() < max_degree：确保当前组的度数和不超过最大度数
+         */
+        let len1=start + size;
+        let len2=size + gates[start + size].0.degree();
+        println!("len1:{},len2:{}",len1,len2);
         while (start + size < gates.len()) && (size + gates[start + size].0.degree() < max_degree) {
             size += 1;
         }
         groups.push(start..start + size);
         start += size;
     }
+    //groups:[0..3, 3..4]
+    println!("groups:{:?}", groups);
 
-    // 获取组的索引
+    // 定义了一个闭包（匿名函数），用于根据门的索引获取该门所在的组的索引。
     let group = |i| groups.iter().position(|range| range.contains(&i)).unwrap();
 
     // `selector_indices[i] = j` 表示第 i 个门使用第 j 个选择器多项式。
     let selector_indices = (0..num_gates).map(group).collect();
+    //// selectors_info: SelectorsInfo { selector_indices: [0, 0, 0, 1], groups: [0..3, 3..4] }
 
     // 占位符值，表示门不使用选择器多项式。
-    let unused = F::from_canonical_usize(UNUSED_SELECTOR);
+    let unused = F::from_canonical_usize(UNUSED_SELECTOR);//0xFFFFFFFF
 
     // 初始化多项式
     let mut polynomials = vec![PolynomialValues::zero(n); groups.len()];
