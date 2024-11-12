@@ -5,7 +5,7 @@ use alloc::{collections::BTreeMap, sync::Arc, vec, vec::Vec};
 use core::cmp::max;
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, sync::Arc};
-//use std::fmt;
+use std::fmt;
 use hashbrown::{HashMap, HashSet};
 use itertools::Itertools;
 use log::{debug, info, warn, Level};
@@ -1119,6 +1119,9 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
     fn sigma_vecs(&self, k_is: &[F], subgroup: &[F]) -> (Vec<PolynomialValues<F>>, Forest) {
         // 获取门实例的数量，即电路的度数
+        //print inputs
+        // println!("k_is:{:?}", k_is);
+        // println!("subgroup:{:?}", subgroup);
         let degree = self.gate_instances.len();
         // 计算度数的对数值
         let degree_log = log2_strict(degree);
@@ -1131,8 +1134,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             degree, // 电路的度数
             self.virtual_target_index, // 虚拟目标的索引 4
         );
-        println!("virtual_target_index:{:?}", self.virtual_target_index);
-        println!("forest:{:?}", forest);
+        // println!("virtual_target_index:{:?}", self.virtual_target_index);
+        // println!("forest:{:?}", forest);
 
         // 遍历所有门实例
         // forest:Forest { parents: [0, 1, …, 538, 539], num_wires: 135, num_routed_wires: 80, degree: 4 }
@@ -1152,24 +1155,30 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             //println!("forest:{:?}", forest);
             // forest:Forest { parents: [0, 1, …, 538, 539], num_wires: 135, num_routed_wires: 80, degree: 4 }
         }
+        //println!("forest:{:?}", forest);
 
-        // 遍历所有virtual_target
+        // 遍历所有virtual_target，长度为4
         for index in 0..self.virtual_target_index {
             // 将每个virtual_target添加到森林中
             forest.add(Target::VirtualTarget { index });
         }
+        //println!("forest:{:?}", forest);
 
-        // 遍历所有复制约束
+        // 遍历所有复制约束,合并虚拟线VirtualTarget跟实体线wire
         for &CopyConstraint { pair: (a, b), .. } in &self.copy_constraints {
             // 合并复制约束中的两个目标
+            //println!("a:{:?}b:{:?}", a,b);
             forest.merge(a, b);
         }
+        //println!("merge forest:{:?}", forest);
 
         // 压缩森林中的路径
         forest.compress_paths();
+        //println!("compress_paths forest:{:?}", forest);
 
-        // 获取线分区
+        // 相同拷贝约束的wire都指向同一个parent，即被放入同一个vec中
         let wire_partition = forest.wire_partition();
+        //println!("wire_partition:{:?}", wire_partition);
         (
             // 获取 sigma 多项式
             wire_partition.get_sigma_polys(degree_log, k_is, subgroup),
@@ -1245,7 +1254,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // those hash wires match the claimed public inputs.
         let num_public_inputs = self.public_inputs.len();
         //println!("Public Inputs: {:?}", self.public_inputs);
-        // self.print_public_inputs();
+        //self.print_public_inputs();
 
         //新增加一个PoseidonGate，并将public_inputs与PoseidonGate连接
         let public_inputs_hash =
@@ -1269,13 +1278,13 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         {
             self.connect(hash_part, Target::wire(pi_gate, wire))
         }
-        // self.print_copy_constraints();
-        // println!("---------------");
+        //self.print_copy_constraints();
+        //println!("---------------");
         //self.print_copy_constraints();
         //self.print_generators();
         //self.generators初始化为"RandomValueGenerator"
         self.randomize_unused_pi_wires(pi_gate);
-        // self.print_generators();
+        //self.print_generators();
 
         // Place LUT-related gates.
         self.add_all_lookups();
@@ -1372,7 +1381,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             fri_params.total_arities() <= degree_bits + rate_bits - cap_height,
             "FRI total reduction arity is too large.",
         );
-        println!("fri_params: {:?}", fri_params);
+        //println!("fri_params: {:?}", fri_params);
         /*
         FriParams {
         config:
@@ -1428,8 +1437,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         };
         // println!("constant_vecs: {:?}", constant_vecs);
         // println!("selectors_info: {:?}", selectors_info);
-        // println!("self.constant_polys(): {:?}", self.constant_polys());
-        // println!("constant_vecs: {:?}", constant_vecs);
+        //println!("self.constant_polys(): {:?}", self.constant_polys());
+        //println!("constant_vecs: {:?}", constant_vecs);
         //[PolynomialValues { values: [2, 0xFFFFFFFF, 1, 0] },
         // PolynomialValues { values: [0xFFFFFFFF, 3, 0xFFFFFFFF, 0xFFFFFFFF] },
         // PolynomialValues { values: [1, 0, 0, 0] },
@@ -1624,4 +1633,5 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let circuit_data = self.build::<C>();
         circuit_data.verifier_data()
     }
+
 }

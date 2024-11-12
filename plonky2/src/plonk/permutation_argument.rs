@@ -63,6 +63,12 @@ impl Forest {
         while self.parents[x_index] != x_index {
             let old_parent = self.parents[x_index];
             self.parents[x_index] = representative;
+            // if old_parent != representative {
+            //     println!("x_index:{:?}",x_index);
+            //     println!("old_parent:{:?}",old_parent);
+            //     println!("new:{:?}",representative);
+            // }
+
             x_index = old_parent;
         }
 
@@ -71,6 +77,9 @@ impl Forest {
 
     /// Merge two sets.
     pub fn merge(&mut self, tx: Target, ty: Target) {
+        // println!("tx:{:?},ty:{:?}",tx,ty);
+        // println!("self.target_index(tx):{:?}",self.target_index(tx));
+        // println!("self.target_index(ty):{:?}",self.target_index(ty));
         let x_index = self.find(self.target_index(tx));
         let y_index = self.find(self.target_index(ty));
 
@@ -90,6 +99,7 @@ impl Forest {
     }
 
     /// Assumes `compress_paths` has already been called.
+    /// 相同拷贝约束的wire都指向同一个parent，即被放入同一个vec中
     pub fn wire_partition(&mut self) -> WirePartition {
         let mut partition = HashMap::<_, Vec<_>>::new();
 
@@ -100,6 +110,8 @@ impl Forest {
                 let t = Target::Wire(w);
                 let x_parent = self.parents[self.target_index(t)];
                 partition.entry(x_parent).or_default().push(w);
+                //println!("partition[{:?}]{:?}",x_parent,partition[&x_parent]);
+
             }
         }
 
@@ -108,6 +120,7 @@ impl Forest {
     }
 }
 
+#[derive(Debug)]
 pub struct WirePartition {
     partition: Vec<Vec<Wire>>,
 }
@@ -202,12 +215,15 @@ impl WirePartition {
         // 遍历每个分区子集
         for subset in &self.partition {
             // 遍历子集中的每个 wire
+            //println!("subset:{:?}",subset);
             for n in 0..subset.len() {
                 // 将当前 wire 和下一个 wire（或循环回到第一个 wire）插入哈希映射
                 //即把相同拷贝约束的邻居关系存储到neighbors中
                 neighbors.insert(subset[n], subset[(n + 1) % subset.len()]);
             }
         }
+        //print the neighbors
+        println!("neighbors:{:?}",neighbors);
 
         // 创建一个向量，用于存储 sigma 映射
         let mut sigma = Vec::with_capacity(num_routed_wires * degree);
@@ -231,6 +247,7 @@ impl WirePartition {
                 // 将邻居的列和行转换为索引，并添加到 sigma 向量中
                 sigma.push(neighbor.column * degree + neighbor.row);
             }
+
         }
 
         // 返回 sigma 映射
