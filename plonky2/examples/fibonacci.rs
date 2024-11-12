@@ -21,7 +21,7 @@ fn main() -> Result<()> {
     let initial_b = builder.add_virtual_target();
     let mut prev_target = initial_a;
     let mut cur_target = initial_b;
-    for i in 0..4 {
+    for _i in 0..4 {
         // println!("{}", i,);
         // println!("begin prev_target:{:?}", prev_target);
         // println!("begin cur_target:{:?}", cur_target);
@@ -54,7 +54,7 @@ fn main() -> Result<()> {
     builder.register_public_input(initial_a);
     builder.register_public_input(initial_b);
     builder.register_public_input(cur_target);
-    builder.print_public_inputs();
+    //builder.print_public_inputs();
 
     // Provide initial values.
     let mut pw = PartialWitness::new();

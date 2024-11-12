@@ -37,10 +37,10 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // 初始化状态，使用零值填充，H::AlgebraicPermutation::WIDTH=8
         let mut state = H::AlgebraicPermutation::new(core::iter::repeat(zero));
          //print_state
-         println!("state1:{:?}",state);
+         //println!("state1:{:?}",state);
         //print H::AlgebraicPermutation::WIDTH
-        println!("H::AlgebraicPermutation::WIDTH:{:?}",H::AlgebraicPermutation::WIDTH);
-        println!("H::AlgebraicPermutation::RATE:{:?}",H::AlgebraicPermutation::RATE);
+        //println!("H::AlgebraicPermutation::WIDTH:{:?}",H::AlgebraicPermutation::WIDTH);
+        //println!("H::AlgebraicPermutation::RATE:{:?}",H::AlgebraicPermutation::RATE);
         // 吸收所有输入块
         //H::AlgebraicPermutation::RATE=8
         //通过 chunks 方法将 inputs 向量按 H::AlgebraicPermutation::RATE 的大小进行分块，并遍历每个分块进行处理。
@@ -51,11 +51,11 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             state.set_from_slice(input_chunk, 0);
             //println!("state2:{:?}",state);
             //self.print_gates();
-            self.print_copy_constraints();
+            //self.print_copy_constraints();
             // 对状态进行置换，新增加一个PoseidonGate进行copy约束，copy约束增加到copy_constraints中
             state = self.permute::<H>(state);
             //self.print_gates();
-            self.print_copy_constraints();
+            //self.print_copy_constraints();
             //println!("state3:{:?}",state);
         }
 
@@ -64,7 +64,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         loop {
             // 从状态中挤出元素
             for &s in state.squeeze() {
-                println!("s:{:?}",s);
+                //println!("s:{:?}",s);
                 outputs.push(s);
                 // 如果输出数量达到要求，返回输出
                 if outputs.len() == num_outputs {

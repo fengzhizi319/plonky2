@@ -5,7 +5,7 @@ use alloc::{collections::BTreeMap, sync::Arc, vec, vec::Vec};
 use core::cmp::max;
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, sync::Arc};
-use std::fmt;
+//use std::fmt;
 use hashbrown::{HashMap, HashSet};
 use itertools::Itertools;
 use log::{debug, info, warn, Level};
@@ -1245,13 +1245,13 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // those hash wires match the claimed public inputs.
         let num_public_inputs = self.public_inputs.len();
         //println!("Public Inputs: {:?}", self.public_inputs);
-        self.print_public_inputs();
+        // self.print_public_inputs();
 
         //新增加一个PoseidonGate，并将public_inputs与PoseidonGate连接
         let public_inputs_hash =
             self.hash_n_to_hash_no_pad::<C::InnerHasher>(self.public_inputs.clone());
-        println!("Public Inputs Hash: {:?}", public_inputs_hash);
-        self.print_copy_constraints();
+        // println!("Public Inputs Hash: {:?}", public_inputs_hash);
+        // self.print_copy_constraints();
         let pi_gate = self.add_gate(PublicInputGate, vec![]);
 
         //self.print_gates();
@@ -1269,25 +1269,25 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         {
             self.connect(hash_part, Target::wire(pi_gate, wire))
         }
-        self.print_copy_constraints();
-        println!("---------------");
+        // self.print_copy_constraints();
+        // println!("---------------");
         //self.print_copy_constraints();
         //self.print_generators();
         //self.generators初始化为"RandomValueGenerator"
         self.randomize_unused_pi_wires(pi_gate);
-        self.print_generators();
+        // self.print_generators();
 
         // Place LUT-related gates.
         self.add_all_lookups();
 
         // Make sure we have enough constant generators. If not, add a `ConstantGate`.
-        self.print_const_generators();
-        self.print_constants_to_targets();
-        self.print_copy_constraints();
+        // self.print_const_generators();
+        // self.print_constants_to_targets();
+        // self.print_copy_constraints();
         while self.constants_to_targets.len() > self.constant_generators.len() {
-            let len1= self.constants_to_targets.len();
-            let len2 = self.constant_generators.len();
-            println!("constants_to_targets len1: {}, constant_generators len2: {}", len1, len2);
+            // let len1= self.constants_to_targets.len();
+            // let len2 = self.constant_generators.len();
+            // println!("constants_to_targets len1: {}, constant_generators len2: {}", len1, len2);
             self.add_gate(
                 ConstantGate {
                     num_consts: self.config.num_constants,
@@ -1295,14 +1295,14 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
                 vec![],
             );
         }
-        self.print_const_generators();
+        //self.print_const_generators();
         //self.print_copy_constraints();
-        self.print_gates();
-        let len1= self.constants_to_targets.len();
-        let len2 = self.constant_generators.len();
-        println!("constants_to_targets len1: {}, constant_generators len2: {}", len1, len2);
+        //self.print_gates();
+        //let len1= self.constants_to_targets.len();
+        //let len2 = self.constant_generators.len();
+        //println!("constants_to_targets len1: {}, constant_generators len2: {}", len1, len2);
         // For each constant-target pair used in the circuit, use a constant generator to fill this target.
-        println!("constants_to_targets: {:?}", self.constants_to_targets);
+        //println!("constants_to_targets: {:?}", self.constants_to_targets);
         // constants_to_targets：{1: VirtualTarget { index: 2 }, 0: VirtualTarget { index: 3 }}
         //self.print_generators();
         for ((c, t), mut const_gen) in self
@@ -1329,15 +1329,15 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
 
             // Set the constant in the constant polynomial.
-            self.print_gate_instances();
+            //self.print_gate_instances();
             self.gate_instances[const_gen.row].constants[const_gen.constant_index] = c;
-            self.print_gate_instances();
+            //self.print_gate_instances();
             // Generate a copy between the target and the routable wire.
             self.connect(Target::wire(const_gen.row, const_gen.wire_index), t);
             // Set the constant in the generator (it's initially set with a dummy value).
             //println!("const_gen({:?})", const_gen);
             const_gen.set_constant(c);
-            println!("const_gen({:?})", const_gen);
+            //println!("const_gen({:?})", const_gen);
             //self.print_generators();
             self.add_simple_generator(const_gen);
             //self.print_generators();
@@ -1390,10 +1390,10 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let quotient_degree_factor = self.config.max_quotient_degree_factor;//8
         let mut gates = self.gates.iter().cloned().collect::<Vec<_>>();
         // Gates need to be sorted by their degrees (and ID to make the ordering deterministic) to compute the selector polynomials.
-        println!("gates: {:?}", gates);
+        //println!("gates: {:?}", gates);
         //gates 向量将首先按门的degree排序，如果度数相同，则按门的 ID 排序
         gates.sort_unstable_by_key(|g| (g.0.degree(), g.0.id()));
-        println!("after gates: {:?}", gates);
+        //println!("after gates: {:?}", gates);
         /*
         [ConstantGate { num_consts: 2 },
         PublicInputGate,
@@ -1406,7 +1406,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         GateInstance { gate_ref: PublicInputGate, constants: [] }
         GateInstance { gate_ref: ConstantGate { num_consts: 2 }, constants: [0, 1] }
          */
-        self.print_gate_instances();
+        //self.print_gate_instances();
         //主要作用是将按照degree进行排序后的gates进行分组，PolynomialValues表示原始gate门在排序后的Gates中的索引，以及在多组中属于第几组。
         let (mut constant_vecs, selectors_info) =
             selector_polynomials(&gates, &self.gate_instances, quotient_degree_factor + 1);
@@ -1428,8 +1428,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         };
         // println!("constant_vecs: {:?}", constant_vecs);
         // println!("selectors_info: {:?}", selectors_info);
-        println!("self.constant_polys(): {:?}", self.constant_polys());
-        println!("constant_vecs: {:?}", constant_vecs);
+        // println!("self.constant_polys(): {:?}", self.constant_polys());
+        // println!("constant_vecs: {:?}", constant_vecs);
         //[PolynomialValues { values: [2, 0xFFFFFFFF, 1, 0] },
         // PolynomialValues { values: [0xFFFFFFFF, 3, 0xFFFFFFFF, 0xFFFFFFFF] },
         // PolynomialValues { values: [1, 0, 0, 0] },
@@ -1441,11 +1441,11 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
         //生成子群，群的阶为2^degree_bits
         let subgroup = F::two_adic_subgroup(degree_bits);
-        println!("subgroup: {:?}", subgroup);
+        //println!("subgroup: {:?}", subgroup);
 
         //计算陪集的移位生成元，即a*H中的a，H为子集.所以通过a即可得到子集H的全部陪集，degree=4，即门的个数，因此子群的阶为4
         //只需要self.config.num_routed_wires个陪集即可。self.config.num_routed_wires=80
-        println!("degree_bits: {}, self.config.num_routed_wires: {}", degree_bits, self.config.num_routed_wires);
+        //println!("degree_bits: {}, self.config.num_routed_wires: {}", degree_bits, self.config.num_routed_wires);
         let k_is = get_unique_coset_shifts(degree, self.config.num_routed_wires);
 
         let (sigma_vecs, forest) = timed!(
