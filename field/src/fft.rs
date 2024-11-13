@@ -51,7 +51,6 @@ pub fn fft_root_table<F: Field>(n: usize) -> FftRootTable<F> {
         root_table.push(root_row);
     }
 
-    // 返回生成的根表
     root_table
 }
 
