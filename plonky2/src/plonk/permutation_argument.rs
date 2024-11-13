@@ -182,18 +182,28 @@ impl WirePartition {
             let mut values = Vec::with_capacity(degree);
             for i in 0..degree {
                 let x = sigma[chunk_start + i];
-                let len1=x / degree;
+                let len1=x / degree;//column
                 //let len2=x % degree;
-                println!("len1:{:?}",len1);
-                //println!("len2:{:?}",len2);
-                //print k_is[x / degree]
-                println!("k_is[x / degree]:{:?}",k_is[x / degree]);
-                //print subgroup[x % degree]
-                println!("subgroup[x % degree]:{:?}",subgroup[x % degree]);
+                // println!("len1:{:?}",len1);
+                // //println!("len2:{:?}",len2);
+                // //print k_is[x / degree]
+                // println!("k_is[x / degree]:{:?}",k_is[x / degree]);
+                // //print subgroup[x % degree]
+                // println!("subgroup[x % degree]:{:?}",subgroup[x % degree]);
 
+                //x / degree:column
+                // x % degree:row
+                //k_is[x / degree]每个列公用一个陪集系数
+                //subgroup[x % degree]每个行采用一个子群元素
+                /*
+                row:0  f1(w^0)
+                row:1  f1(w^1)
+                row:2  f1(w^2)
+                row:3  f1(w^3)=
+                 */
                 values.push(k_is[x / degree] * subgroup[x % degree]);
             }
-            println!("values:{:?}",values);
+            //println!("values:{:?}",values);
             result.push(PolynomialValues::new(values));
         }
         result
