@@ -1463,6 +1463,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         );
 
         // Precompute FFT roots.
+        //quotient_degree_factor=8，rate_bits=3，degree_bits=2，max_fft_points=32
         let max_fft_points = 1 << (degree_bits + max(rate_bits, log2_ceil(quotient_degree_factor)));
         let fft_root_table = fft_root_table(max_fft_points);
 

@@ -12,23 +12,46 @@ use crate::types::Field;
 pub type FftRootTable<F> = Vec<Vec<F>>;
 
 pub fn fft_root_table<F: Field>(n: usize) -> FftRootTable<F> {
+    // 计算 n 的二进制对数，得到 lg_n=5，2^5=32
     let lg_n = log2_strict(n);
-    // bases[i] = g^2^i, for i = 0, ..., lg_n - 1
+
+    // 初始化一个容量为 lg_n 的向量，用于存储基数
+    // bases[i] = g^2^i, 其中 i = 0, ..., lg_n - 1
     let mut bases = Vec::with_capacity(lg_n);
+
+    // 获取 lg_n 阶的子群的生成元 g
     let mut base = F::primitive_root_of_unity(lg_n);
     bases.push(base);
+
+    // 计算并存储 g^2^i 的值
     for _ in 1..lg_n {
         base = base.square(); // base = g^2^_
         bases.push(base);
     }
 
+    // 初始化一个容量为 lg_n 的向量，用于存储根表
     let mut root_table = Vec::with_capacity(lg_n);
+
+    // 生成每一行的根表
     for lg_m in 1..=lg_n {
+        // 计算 half_m = 2^(lg_m - 1)
         let half_m = 1 << (lg_m - 1);
-        let base = bases[lg_n - lg_m];
+
+        // 获取当前行的基数
+        let len = lg_n - lg_m;
+        let base = bases[len];
+        //let base = bases[lg_n - lg_m];
+        //print half_m,len
+        //println!("half_m:{:?},len:{:?}",half_m,len);
+
+        // 生成当前行的根并存储到 root_row 中
+        //base.powers()：调用 base 的 powers 方法，生成一个迭代器，该迭代器会依次生成 base 的幂次。
+        // .take(half_m.max(2))：从迭代器中获取前 half_m.max(2) 个元素。half_m.max(2) 的意思是取 half_m 和 2 中的较大值，确保至少获取 2 个元素。
         let root_row = base.powers().take(half_m.max(2)).collect();
         root_table.push(root_row);
     }
+
+    // 返回生成的根表
     root_table
 }
 
