@@ -1456,7 +1456,6 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         //只需要self.config.num_routed_wires个陪集即可。self.config.num_routed_wires=80
         //println!("degree_bits: {}, self.config.num_routed_wires: {}", degree_bits, self.config.num_routed_wires);
         let k_is = get_unique_coset_shifts(degree, self.config.num_routed_wires);
-
         let (sigma_vecs, forest) = timed!(
             timing,
             "generate sigma polynomials",
