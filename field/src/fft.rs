@@ -29,7 +29,6 @@ pub fn fft_root_table<F: Field>(n: usize) -> FftRootTable<F> {
         bases.push(base);
     }
 
-    // 初始化一个容量为 lg_n 的向量，用于存储根表
     let mut root_table = Vec::with_capacity(lg_n);
 
     // 生成每一行的根表
@@ -40,17 +39,20 @@ pub fn fft_root_table<F: Field>(n: usize) -> FftRootTable<F> {
         // 获取当前行的基数
         let len = lg_n - lg_m;
         let base = bases[len];
-        //let base = bases[lg_n - lg_m];
-        //print half_m,len
-        //println!("half_m:{:?},len:{:?}",half_m,len);
 
         // 生成当前行的根并存储到 root_row 中
         //base.powers()：调用 base 的 powers 方法，生成一个迭代器，该迭代器会依次生成 base 的幂次。
         // .take(half_m.max(2))：从迭代器中获取前 half_m.max(2) 个元素。half_m.max(2) 的意思是取 half_m 和 2 中的较大值，确保至少获取 2 个元素。
         let root_row = base.powers().take(half_m.max(2)).collect();
+        //bases[4]^{0,1},bases[3]^{0,1},bases[2]^{0,1,2,3},bases[1]^{0,1,...,7},bases[0]^{0,1,...,15}
+
         root_table.push(root_row);
     }
-
+    // (g^16)^{0,1},
+    // (g^8)^{0,1},
+    // (g^4)^{0,1,2,3},
+    // (g^2)^{0,1,...,7},
+    // g^{0,1,...,15}
     root_table
 }
 
