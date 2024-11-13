@@ -175,7 +175,7 @@ impl WirePartition {
     ) -> Vec<PolynomialValues<F>> {
         let degree = 1 << degree_log;
         let sigma = self.get_sigma_map(degree, k_is.len());
-        println!("sigma: {:?}", sigma);
+        //println!("sigma: {:?}", sigma);
 
         let mut result = Vec::new();
         for chunk_start in (0..sigma.len()).step_by(degree) {
@@ -223,7 +223,7 @@ impl WirePartition {
             }
         }
         //print the neighbors
-        println!("neighbors:{:?}",neighbors);
+        //println!("neighbors:{:?}",neighbors);
 
         // 创建一个向量，用于存储 sigma 映射
         let mut sigma = Vec::with_capacity(num_routed_wires * degree);
