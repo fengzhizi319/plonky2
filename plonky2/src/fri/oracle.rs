@@ -37,7 +37,7 @@ pub struct PolynomialBatch<F: RichField + Extendable<D>, C: GenericConfig<D, F =
 }
 
 impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize> Default
-    for PolynomialBatch<F, C, D>
+for PolynomialBatch<F, C, D>
 {
     fn default() -> Self {
         PolynomialBatch {
@@ -51,23 +51,34 @@ impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize> D
 }
 
 impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>
-    PolynomialBatch<F, C, D>
+PolynomialBatch<F, C, D>
 {
     /// Creates a list polynomial commitment for the polynomials interpolating the values in `values`.
+    /// 从多项式值表示创建一个多项式系数表示
     pub fn from_values(
-        values: Vec<PolynomialValues<F>>,
+        values: Vec<PolynomialValues<F>>,//包含多项式值的向量
         rate_bits: usize,
-        blinding: bool,
-        cap_height: usize,
+        blinding: bool,//是否启用盲化
+        cap_height: usize,//FRI 配置中的 cap 高度
         timing: &mut TimingTree,
         fft_root_table: Option<&FftRootTable<F>>,
     ) -> Self {
-        let coeffs = timed!(
-            timing,
-            "IFFT",
-            values.into_par_iter().map(|v| v.ifft()).collect::<Vec<_>>()
-        );
-
+        // 使用 IFFT（逆快速傅里叶变换）将多项式值转换为多项式系数，下面是原始代码：
+        //     let coeffs = timed!(
+        //     timing,
+        //     "IFFT",
+        //     values.into_par_iter().map(|v| v.ifft()).collect::<Vec<_>>()
+        // );
+        // 使用 IFFT（逆快速傅里叶变换）将多项式值转换为多项式系数，下面改成单线程，方便调试的代码
+        let mut coeffs = Vec::new();
+        for v in values {
+            println!("v:{:?}",v);
+            let tmp=v.ifft();
+            coeffs.push(tmp);
+        }
+        let coeffs = timed!(timing, "IFFT", coeffs);
+        //结束调试
+        // 从多项式系数创建多项式批次
         Self::from_coeffs(
             coeffs,
             rate_bits,
@@ -87,7 +98,7 @@ impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>
         timing: &mut TimingTree,
         fft_root_table: Option<&FftRootTable<F>>,
     ) -> Self {
-        let degree = polynomials[0].len();
+        let degree = polynomials[0].len();//84=4+80
         let lde_values = timed!(
             timing,
             "FFT + blinding",

@@ -17,17 +17,40 @@ pub mod serialization;
 pub mod strided_view;
 pub mod timing;
 
+/// 转置多项式值的矩阵
+///
+/// # 参数
+///
+/// * `polys` - 一个包含多项式值的向量
+///
+/// # 返回值
+///
+/// 返回一个新的二维向量，表示转置后的多项式值矩阵
 pub(crate) fn transpose_poly_values<F: Field>(polys: Vec<PolynomialValues<F>>) -> Vec<Vec<F>> {
+    // 将多项式值向量转换为二维向量
     let poly_values = polys.into_iter().map(|p| p.values).collect::<Vec<_>>();
+    // 调用 transpose 函数转置二维向量
     transpose(&poly_values)
 }
 
+/// 转置一个矩阵
+///
+/// # 参数
+///
+/// * `matrix` - 一个二维向量，表示要转置的矩阵
+///
+/// # 返回值
+///
+/// 返回一个新的二维向量，表示转置后的矩阵
 pub fn transpose<T: Send + Sync + Copy>(matrix: &[Vec<T>]) -> Vec<Vec<T>> {
+    // 获取矩阵的列数
     let len = matrix[0].len();
+
+    // 创建一个新的二维向量，存储转置后的矩阵
     (0..len)
-        .into_par_iter()
-        .map(|i| matrix.iter().map(|row| row[i]).collect())
-        .collect()
+        .into_par_iter() // 并行迭代器
+        .map(|i| matrix.iter().map(|row| row[i]).collect()) // 收集每一列的元素
+        .collect() // 将收集到的列元素转换为新的二维向量
 }
 
 pub(crate) const fn reverse_bits(n: usize, num_bits: usize) -> usize {

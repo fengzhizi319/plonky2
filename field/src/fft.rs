@@ -89,19 +89,35 @@ pub fn ifft<F: Field>(poly: PolynomialValues<F>) -> PolynomialCoeffs<F> {
     ifft_with_options(poly, None, None)
 }
 
+/// 使用选项从多项式值进行逆快速傅里叶变换（IFFT）
+///
+/// # 参数
+///
+/// * `poly` - 包含多项式值的结构体
+/// * `zero_factor` - 可选的零因子，用于指定输入中非零元素的数量
+/// * `root_table` - 可选的 FFT 根表引用
+///
+/// # 返回值
+///
+/// 返回一个包含多项式系数的结构体
 pub fn ifft_with_options<F: Field>(
     poly: PolynomialValues<F>,
     zero_factor: Option<usize>,
     root_table: Option<&FftRootTable<F>>,
 ) -> PolynomialCoeffs<F> {
+    // 获取多项式值的长度
     let n = poly.len();
+    // 计算 n 的二进制对数
     let lg_n = log2_strict(n);
-    let n_inv = F::inverse_2exp(lg_n);
+    // 计算 2^lg_n =n 的逆元素,结果为：13835058052060938241，0xfffffff40000001
+    let n_inv = F::inverse_2exp(lg_n);//结果为：13835058052060938241，0xfffffff40000001
 
+    // 将多项式值解构为缓冲区
     let PolynomialValues { values: mut buffer } = poly;
+    // 调用 fft_dispatch 函数进行 FFT 变换
     fft_dispatch(&mut buffer, zero_factor, root_table);
 
-    // We reverse all values except the first, and divide each by n.
+    // 反转除第一个值外的所有值，并将每个值除以 n
     buffer[0] *= n_inv;
     buffer[n / 2] *= n_inv;
     for i in 1..(n / 2) {
@@ -111,6 +127,7 @@ pub fn ifft_with_options<F: Field>(
         buffer[i] = coeffs_i;
         buffer[j] = coeffs_j;
     }
+    // 返回包含多项式系数的结构体
     PolynomialCoeffs { coeffs: buffer }
 }
 

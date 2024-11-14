@@ -1439,10 +1439,13 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // println!("selectors_info: {:?}", selectors_info);
         //println!("self.constant_polys(): {:?}", self.constant_polys());
         //println!("constant_vecs: {:?}", constant_vecs);
-        //[PolynomialValues { values: [2, 0xFFFFFFFF, 1, 0] },
-        // PolynomialValues { values: [0xFFFFFFFF, 3, 0xFFFFFFFF, 0xFFFFFFFF] },
-        // PolynomialValues { values: [1, 0, 0, 0] },
-        // PolynomialValues { values: [1, 0, 0, 1] }
+
+        /*
+        [PolynomialValues { values: [2, 0xFFFFFFFF, 1, 0] },
+        PolynomialValues { values: [0xFFFFFFFF, 3, 0xFFFFFFFF, 0xFFFFFFFF] },
+        PolynomialValues { values: [1, 0, 0, 0] },
+        PolynomialValues { values: [1, 0, 0, 1]
+         */
         constant_vecs.extend(self.constant_polys());
 
         //println!("constant_vecs: {:?}", constant_vecs);
@@ -1476,12 +1479,23 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let fft_root_table = fft_root_table(max_fft_points);
 
         let constants_sigmas_commitment = if commit_to_sigma {
+            // 将常量向量和 sigma 向量连接成一个向量
             let constants_sigmas_vecs = [constant_vecs, sigma_vecs.clone()].concat();
+            //println!("constants_sigmas_vecs: {:?}", constants_sigmas_vecs);
+
+            // 从值创建一个多项式批次
+            // 参数依次为：
+            // 1. constants_sigmas_vecs: 包含常量和 sigma 的向量
+            // 2. rate_bits: FRI 配置中的速率位数
+            // 3. PlonkOracle::CONSTANTS_SIGMAS.blinding: 是否启用盲化
+            // 4. cap_height: FRI 配置中的 cap 高度
+            // 5. &mut timing: 用于记录时间的计时树
+            // 6. Some(&fft_root_table): FFT 根表
             PolynomialBatch::<F, C, D>::from_values(
                 constants_sigmas_vecs,
-                rate_bits,
+                rate_bits,//3
                 PlonkOracle::CONSTANTS_SIGMAS.blinding,
-                cap_height,
+                cap_height,//4
                 &mut timing,
                 Some(&fft_root_table),
             )
