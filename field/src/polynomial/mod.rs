@@ -297,7 +297,7 @@ impl<F: Field> PolynomialCoeffs<F> {
     }
 
     /// Returns the evaluation of the polynomial on the coset `shift*H`.
-    /// 带选项的余子群快速傅里叶变换
+    /// 转化为陪集上的值，然后进行快速傅里叶变换
     pub fn coset_fft_with_options(
         &self,
         shift: F,

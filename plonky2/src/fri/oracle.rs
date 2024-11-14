@@ -145,26 +145,42 @@ PolynomialBatch<F, C, D>
         }
     }
 
+    /// 计算多项式的低度扩展（LDE）值
+    ///
+    /// # 参数
+    ///
+    /// * `polynomials` - 包含多项式系数的切片
+    /// * `rate_bits` - FRI 配置中的速率位数
+    /// * `blinding` - 是否启用盲化
+    /// * `fft_root_table` - FFT 根表的可选引用
+    ///
+    /// # 返回值
+    ///
+    /// 返回一个包含 LDE 值的向量
     pub(crate) fn lde_values(
         polynomials: &[PolynomialCoeffs<F>],
         rate_bits: usize,
         blinding: bool,
         fft_root_table: Option<&FftRootTable<F>>,
     ) -> Vec<Vec<F>> {
+        // 获取多项式的度
         let degree = polynomials[0].len();
 
-        // If blinding, salt with two random elements to each leaf vector.
+        // 如果启用盲化，则在每个叶子向量中添加两个随机元素作为盐
         let salt_size = if blinding { SALT_SIZE } else { 0 };
 
         polynomials
             .par_iter()
             .map(|p| {
+                // 确保所有多项式的度一致
                 assert_eq!(p.len(), degree, "Polynomial degrees inconsistent");
+                // 计算多项式的 LDE 值，并进行余弦 FFT 变换
                 p.lde(rate_bits)
                     .coset_fft_with_options(F::coset_shift(), Some(rate_bits), fft_root_table)
                     .values
             })
             .chain(
+                // 如果启用盲化，则生成随机向量并添加到结果中
                 (0..salt_size)
                     .into_par_iter()
                     .map(|_| F::rand_vec(degree << rate_bits)),
