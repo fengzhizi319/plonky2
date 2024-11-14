@@ -91,6 +91,20 @@ PolynomialBatch<F, C, D>
     }
 
     /// Creates a list polynomial commitment for the polynomials `polynomials`.
+    /// 从多项式系数创建一个多项式批次
+    ///
+    /// # 参数
+    ///
+    /// * `polynomials` - 包含多项式系数的向量
+    /// * `rate_bits` - FRI 配置中的速率位数
+    /// * `blinding` - 是否启用盲化
+    /// * `cap_height` - FRI 配置中的 cap 高度
+    /// * `timing` - 用于记录时间的计时树
+    /// * `fft_root_table` - FFT 根表的可选引用
+    ///
+    /// # 返回值
+    ///
+    /// 返回一个新的多项式批次
     pub fn from_coeffs(
         polynomials: Vec<PolynomialCoeffs<F>>,
         rate_bits: usize,
@@ -99,21 +113,29 @@ PolynomialBatch<F, C, D>
         timing: &mut TimingTree,
         fft_root_table: Option<&FftRootTable<F>>,
     ) -> Self {
-        let degree = polynomials[0].len();//84=4+80
+        // 获取多项式的度
+        let degree = polynomials[0].len(); // 84=4+80
+
+        // 使用 FFT 和盲化生成 LDE（低度扩展）值
         let lde_values = timed!(
-            timing,
-            "FFT + blinding",
-            Self::lde_values(&polynomials, rate_bits, blinding, fft_root_table)
-        );
+        timing,
+        "FFT + blinding",
+        Self::lde_values(&polynomials, rate_bits, blinding, fft_root_table)
+    );
 
+        // 转置 LDE 值
         let mut leaves = timed!(timing, "transpose LDEs", transpose(&lde_values));
+        // 反转索引位
         reverse_index_bits_in_place(&mut leaves);
-        let merkle_tree = timed!(
-            timing,
-            "build Merkle tree",
-            MerkleTree::new(leaves, cap_height)
-        );
 
+        // 构建 Merkle 树
+        let merkle_tree = timed!(
+        timing,
+        "build Merkle tree",
+        MerkleTree::new(leaves, cap_height)
+    );
+
+        // 返回包含多项式批次的结构体
         Self {
             polynomials,
             merkle_tree,
