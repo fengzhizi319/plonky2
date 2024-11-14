@@ -12,6 +12,58 @@ use crate::types::Field;
 pub type FftRootTable<F> = Vec<Vec<F>>;
 
 pub fn fft_root_table<F: Field>(n: usize) -> FftRootTable<F> {
+    // n=4时的参数
+    // 计算 n 的二进制对数，得到 lg_n=2
+    let lg_n = log2_strict(n);
+
+    // 初始化一个容量为 lg_n 的向量，用于存储基数
+
+    let mut bases = Vec::with_capacity(lg_n);
+
+    // 获取 2^lg_n 阶的子群的生成元 ，lg_n=2时，g=281474976710656,即4阶子群的生成元为281474976710656
+    let mut base = F::primitive_root_of_unity(lg_n);
+    bases.push(base);
+
+    // 计算并存储 g^2^i 的值,// bases[i] = g^(2^i)={g,g^2,...}, 其中 i = 0, ..., lg_n - 1
+    for _ in 1..lg_n {
+        base = base.square(); // base = g^2^_
+        bases.push(base);
+    }
+
+    let mut root_table = Vec::with_capacity(lg_n);
+
+    // 生成每一行的根表
+    for lg_m in 1..=lg_n {
+        // 计算 half_m = 2^(lg_m - 1)
+        let half_m = 1 << (lg_m - 1);
+
+        // 获取当前行的基数
+        let len = lg_n - lg_m;
+        let base = bases[len];
+
+        // 生成当前行的根并存储到 root_row 中
+        //base.powers()：调用 base 的 powers 方法，生成一个迭代器，该迭代器会依次生成 base 的幂次。
+        // .take(half_m.max(2))：从迭代器中获取前 half_m.max(2) 个元素。half_m.max(2) 的意思是取 half_m 和 2 中的较大值，确保至少获取 2 个元素。
+        let root_row = base.powers().take(half_m.max(2)).collect();
+
+
+        root_table.push(root_row);
+    }
+    /*n=5的结果如下
+     bases[4]^{0,1},bases[3]^{0,1},bases[2]^{0,1,2,3},bases[1]^{0,1,...,7},bases[0]^{0,1,...,15}
+    (g^16)^{0,1},
+    (g^8)^{0,1},
+    (g^4)^{0,1,2,3},
+    (g^2)^{0,1,...,7},
+    g^{0,1,...,15}
+     */
+    /*n=2的结果如下
+     root_table[0]=(g^2)^{0,1}={1,18446744069414584320}
+     root_table[1]=(g)^{0,1},={1,281474976710656}
+    */
+    root_table
+}
+pub fn fft_root_table_n32<F: Field>(n: usize) -> FftRootTable<F> {
     // 计算 n 的二进制对数，得到 lg_n=5，2^5=32
     let lg_n = log2_strict(n);
 
@@ -55,25 +107,27 @@ pub fn fft_root_table<F: Field>(n: usize) -> FftRootTable<F> {
     // g^{0,1,...,15}
     root_table
 }
-
-#[inline]
+// #[inline]
 fn fft_dispatch<F: Field>(
     input: &mut [F],
     zero_factor: Option<usize>,
     root_table: Option<&FftRootTable<F>>,
 ) {
     let computed_root_table = root_table.is_none().then(|| fft_root_table(input.len()));
+    //g^0,g^2={1,18446744069414584320}
+    //g^0,g^1={1,281474976710656}}
     let used_root_table = root_table.or(computed_root_table.as_ref()).unwrap();
+    //print used_root_table
 
     fft_classic(input, zero_factor.unwrap_or(0), used_root_table);
 }
 
-#[inline]
+// #[inline]
 pub fn fft<F: Field>(poly: PolynomialCoeffs<F>) -> PolynomialValues<F> {
     fft_with_options(poly, None, None)
 }
 
-#[inline]
+// #[inline]
 pub fn fft_with_options<F: Field>(
     poly: PolynomialCoeffs<F>,
     zero_factor: Option<usize>,
@@ -84,7 +138,7 @@ pub fn fft_with_options<F: Field>(
     PolynomialValues::new(buffer)
 }
 
-#[inline]
+// #[inline]
 pub fn ifft<F: Field>(poly: PolynomialValues<F>) -> PolynomialCoeffs<F> {
     ifft_with_options(poly, None, None)
 }
@@ -112,7 +166,7 @@ pub fn ifft_with_options<F: Field>(
     // 计算 2^lg_n =n 的逆元素,结果为：13835058052060938241，0xfffffff40000001
     let n_inv = F::inverse_2exp(lg_n);//结果为：13835058052060938241，0xfffffff40000001
 
-    // 将多项式值解构为缓冲区
+    // 将多项式值解构为缓冲区,poly:[2, 4294967295, 1, 0] -> buffer:[2, 4294967295, 1, 0]
     let PolynomialValues { values: mut buffer } = poly;
     // 调用 fft_dispatch 函数进行 FFT 变换
     fft_dispatch(&mut buffer, zero_factor, root_table);

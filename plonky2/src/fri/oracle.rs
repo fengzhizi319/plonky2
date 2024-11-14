@@ -72,7 +72,7 @@ PolynomialBatch<F, C, D>
         // 使用 IFFT（逆快速傅里叶变换）将多项式值转换为多项式系数，下面改成单线程，方便调试的代码
         let mut coeffs = Vec::new();
         for v in values {
-            println!("v:{:?}",v);
+            //println!("v:{:?}",v);
             let tmp=v.ifft();
             coeffs.push(tmp);
         }
