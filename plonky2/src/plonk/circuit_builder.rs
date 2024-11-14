@@ -1455,6 +1455,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         let subgroup = F::two_adic_subgroup(degree_bits);
         //println!("subgroup: {:?}", subgroup);
 
+
         //计算陪集的移位生成元，即a*H中的a，H为子集.所以通过a即可得到子集H的全部陪集，degree=4，即门的个数，因此子群的阶为4
         //只需要self.config.num_routed_wires个陪集即可。self.config.num_routed_wires=80
         //println!("degree_bits: {}, self.config.num_routed_wires: {}", degree_bits, self.config.num_routed_wires);
