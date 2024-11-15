@@ -183,6 +183,8 @@ unsafe fn reverse_index_bits_in_place_chunks<T>(
 const BIG_T_SIZE: usize = 1 << 14;
 const SMALL_ARR_SIZE: usize = 1 << 16;
 //
+///在快速傅里叶变换（FFT）中，位反转排列是一个关键步骤。FFT 算法分多个阶段处理数据，每个阶段处理的元素间隔逐渐增大。
+/// 为了高效地访问这些元素，通常在开始主要的 FFT 计算之前，对输入数组进行位反转排列。
 pub fn reverse_index_bits_in_place<T>(arr: &mut [T]) {
     let n = arr.len();
     let lb_n = log2_strict(n);

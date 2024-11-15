@@ -80,7 +80,7 @@ PolynomialBatch<F, C, D>
         let coeffs = timed!(timing, "IFFT", coeffs);
         //println!("coeffs:{:?}",timing);
         //结束调试
-        // 从多项式系数创建多项式承诺
+        // 从多项式系数创建多项式FRI承诺
         Self::from_coeffs(
             coeffs,
             rate_bits,
@@ -91,20 +91,8 @@ PolynomialBatch<F, C, D>
         )
     }
 
+    ///先进行低度扩展，在转到陪集上，然后进行FFT变换，在建立merkle树承诺
     /// Creates a list polynomial commitment for the polynomials `polynomials`.
-    ///
-    /// # 参数
-    ///
-    /// * `polynomials` - 包含多项式系数的向量
-    /// * `rate_bits` - FRI 配置中的速率位数
-    /// * `blinding` - 是否启用盲化
-    /// * `cap_height` - FRI 配置中的 cap 高度
-    /// * `timing` - 用于记录时间的计时树
-    /// * `fft_root_table` - FFT 根表的可选引用
-    ///
-    /// # 返回值
-    ///
-    /// 返回一个新的批量多项式承诺
     pub fn from_coeffs(
         polynomials: Vec<PolynomialCoeffs<F>>,
         rate_bits: usize,
@@ -127,13 +115,8 @@ PolynomialBatch<F, C, D>
         let mut leaves = timed!(timing, "transpose LDEs", transpose(&lde_values));
         //let l1=leaves.clone();
 
-        // 反转索引位,
+        // 反转索引位
         reverse_index_bits_in_place(&mut leaves);
-        // for i in 0..leaves.len() {
-        //     println!("leaves i=:{:?}   {:?}",i,leaves[i][0]);
-        //     println!("l1 i=:{:?}     {:?}",i,l1[i][0]);
-        // }
-
 
         // 构建 Merkle 树
         let merkle_tree = timed!(
@@ -165,26 +148,26 @@ PolynomialBatch<F, C, D>
         // 如果启用盲化，则在每个叶子向量中添加4个随机元素作为盐
         let salt_size = if blinding { SALT_SIZE } else { 0 };
 
-                polynomials
-                    .par_iter()
-                    .map(|p| {
-                        // 确保所有多项式的度一致
-                        assert_eq!(p.len(), degree, "Polynomial degrees inconsistent");
-                        //p.lde(rate_bits)元素个数扩展到以前的2^lde,用0进行填充
-                        //coset_fft_with_options先转到陪集上，然后进行FFT变换
-                        p.lde(rate_bits)
-                            .coset_fft_with_options(F::coset_shift(), Some(rate_bits), fft_root_table)
-                            .values
-                    })
-                    .chain(
-                        //在这个示例中，a.iter() 和 b.iter() 是两个迭代器，.chain(b.iter()) 将它们连接在一起，形成一个新的迭代器。
-                        // collect() 方法将这个新的迭代器收集成一个向量。最终输出的向量包含了 a 和 b 中的所有元素
-                        // 如果启用盲化，则生成随机向量并添加到结果中，数据维度保持一致
-                        (0..salt_size)
-                            .into_par_iter()
-                            .map(|_| F::rand_vec(degree << rate_bits)),
-                    )
-                    .collect()
+        polynomials
+            .par_iter()
+            .map(|p| {
+                // 确保所有多项式的度一致
+                assert_eq!(p.len(), degree, "Polynomial degrees inconsistent");
+                //p.lde(rate_bits)元素个数扩展到以前的2^lde,用0进行填充
+                //coset_fft_with_options先转到陪集上，然后进行FFT变换
+                p.lde(rate_bits)
+                    .coset_fft_with_options(F::coset_shift(), Some(rate_bits), fft_root_table)
+                    .values
+            })
+            .chain(
+                //在这个示例中，a.iter() 和 b.iter() 是两个迭代器，.chain(b.iter()) 将它们连接在一起，形成一个新的迭代器。
+                // collect() 方法将这个新的迭代器收集成一个向量。最终输出的向量包含了 a 和 b 中的所有元素
+                // 如果启用盲化，则生成随机向量并添加到结果中，数据维度保持一致
+                (0..salt_size)
+                    .into_par_iter()
+                    .map(|_| F::rand_vec(degree << rate_bits)),
+            )
+            .collect()
 
 
         /*
