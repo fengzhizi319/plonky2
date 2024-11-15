@@ -113,10 +113,10 @@ PolynomialBatch<F, C, D>
         timing: &mut TimingTree,
         fft_root_table: Option<&FftRootTable<F>>,
     ) -> Self {
-        // 获取多项式的度
+
         let degree = polynomials[0].len(); // 84=4+80
 
-        // 使用 FFT 和盲化生成 LDE（低度扩展）值
+        // 先进行低度扩展，在转到陪集上，然后进行FFT变换
         let lde_values = timed!(
         timing,
         "FFT + blinding",
@@ -125,8 +125,15 @@ PolynomialBatch<F, C, D>
 
         // 转置 LDE 值
         let mut leaves = timed!(timing, "transpose LDEs", transpose(&lde_values));
-        // 反转索引位
+        //let l1=leaves.clone();
+
+        // 反转索引位,
         reverse_index_bits_in_place(&mut leaves);
+        // for i in 0..leaves.len() {
+        //     println!("leaves i=:{:?}   {:?}",i,leaves[i][0]);
+        //     println!("l1 i=:{:?}     {:?}",i,l1[i][0]);
+        // }
+
 
         // 构建 Merkle 树
         let merkle_tree = timed!(
@@ -135,7 +142,7 @@ PolynomialBatch<F, C, D>
         MerkleTree::new(leaves, cap_height)
     );
 
-        // 返回包含多项式批次的结构体
+        // 返回包含Merkle的多项式承诺以及多项式
         Self {
             polynomials,
             merkle_tree,
@@ -145,7 +152,7 @@ PolynomialBatch<F, C, D>
         }
     }
 
-    /// ///先进行低度扩展，在转到陪集上，然后进行FFT变换
+    ///先进行低度扩展，在转到陪集上，然后进行FFT变换
     pub(crate) fn lde_values(
         polynomials: &[PolynomialCoeffs<F>],
         rate_bits: usize,

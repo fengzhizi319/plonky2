@@ -182,6 +182,7 @@ unsafe fn reverse_index_bits_in_place_chunks<T>(
 // Ensure that SMALL_ARR_SIZE >= 4 * BIG_T_SIZE.
 const BIG_T_SIZE: usize = 1 << 14;
 const SMALL_ARR_SIZE: usize = 1 << 16;
+//
 pub fn reverse_index_bits_in_place<T>(arr: &mut [T]) {
     let n = arr.len();
     let lb_n = log2_strict(n);
