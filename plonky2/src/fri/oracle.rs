@@ -56,7 +56,7 @@ PolynomialBatch<F, C, D>
     /// Creates a list polynomial commitment for the polynomials interpolating the values in `values`.
     /// 从多项式值表示创建一个多项式系数表示
     pub fn from_values(
-        values: Vec<PolynomialValues<F>>,//包含多项式值的向量
+        values: Vec<PolynomialValues<F>>,//包含多项式值的向量，已经被陪集掩码过
         rate_bits: usize,
         blinding: bool,//是否启用盲化
         cap_height: usize,//FRI 配置中的 cap 高度
@@ -72,14 +72,15 @@ PolynomialBatch<F, C, D>
         // 使用 IFFT（逆快速傅里叶变换）将多项式值转换为多项式系数，下面改成单线程，方便调试的代码
         let mut coeffs = Vec::new();
         for v in values {
-            println!("v:{:?}",v);
+            //println!("v:{:?}",v);
             let tmp=v.ifft();
-            println!("tmp:{:?}",tmp);
+            //println!("tmp:{:?}",tmp);
             coeffs.push(tmp);
         }
         let coeffs = timed!(timing, "IFFT", coeffs);
+        //println!("coeffs:{:?}",timing);
         //结束调试
-        // 从多项式系数创建多项式批次
+        // 从多项式系数创建多项式承诺
         Self::from_coeffs(
             coeffs,
             rate_bits,
@@ -91,7 +92,6 @@ PolynomialBatch<F, C, D>
     }
 
     /// Creates a list polynomial commitment for the polynomials `polynomials`.
-    /// 从多项式系数创建一个多项式批次
     ///
     /// # 参数
     ///
@@ -104,7 +104,7 @@ PolynomialBatch<F, C, D>
     ///
     /// # 返回值
     ///
-    /// 返回一个新的多项式批次
+    /// 返回一个新的批量多项式承诺
     pub fn from_coeffs(
         polynomials: Vec<PolynomialCoeffs<F>>,
         rate_bits: usize,

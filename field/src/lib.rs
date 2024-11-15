@@ -32,3 +32,4 @@ mod field_testing;
 
 #[cfg(test)]
 mod prime_field_testing;
+mod charles_test;
