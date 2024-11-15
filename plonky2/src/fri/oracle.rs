@@ -193,8 +193,11 @@ PolynomialBatch<F, C, D>
             // Ensure all polynomials have the same degree
             assert_eq!(p.len(), degree, "Polynomial degrees inconsistent");
             // Compute the LDE values and perform the coset FFT transformation
-            let lde_values = p.lde(rate_bits);
-            let coset_fft_values = lde_values.coset_fft_with_options(F::coset_shift(), Some(rate_bits), fft_root_table);
+            //p.lde(rate_bits)元素个数扩展到以前的2^lde,用0进行填充
+            let p_lde = p.lde(rate_bits);
+            println!("p_lde:{:?}",p_lde);
+            //先把点值多项式转化为陪集上，然后在陪集上进行FFT变换
+            let coset_fft_values = p_lde.coset_fft_with_options(F::coset_shift(), Some(rate_bits), fft_root_table);
             let lde = coset_fft_values.values;
             lde_values.push(lde);
         }
@@ -325,7 +328,7 @@ mod tests {
 
 
         let rate_bits = 3;
-        let blinding = false;
+        let blinding = true;
         let fft_root_table = None;
 
 
