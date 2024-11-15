@@ -166,26 +166,45 @@ PolynomialBatch<F, C, D>
         // 获取多项式的度
         let degree = polynomials[0].len();
 
-        // 如果启用盲化，则在每个叶子向量中添加两个随机元素作为盐
+        // 如果启用盲化，则在每个叶子向量中添加4个随机元素作为盐
         let salt_size = if blinding { SALT_SIZE } else { 0 };
+        /*
+                polynomials
+                    .par_iter()
+                    .map(|p| {
+                        // 确保所有多项式的度一致
+                        assert_eq!(p.len(), degree, "Polynomial degrees inconsistent");
+                        // 计算多项式的 LDE 值，并进行余弦 FFT 变换
+                        p.lde(rate_bits)
+                            .coset_fft_with_options(F::coset_shift(), Some(rate_bits), fft_root_table)
+                            .values
+                    })
+                    .chain(
+                        // 如果启用盲化，则生成随机向量并添加到结果中
+                        (0..salt_size)
+                            .into_par_iter()
+                            .map(|_| F::rand_vec(degree << rate_bits)),
+                    )
+                    .collect()
 
-        polynomials
-            .par_iter()
-            .map(|p| {
-                // 确保所有多项式的度一致
-                assert_eq!(p.len(), degree, "Polynomial degrees inconsistent");
-                // 计算多项式的 LDE 值，并进行余弦 FFT 变换
-                p.lde(rate_bits)
-                    .coset_fft_with_options(F::coset_shift(), Some(rate_bits), fft_root_table)
-                    .values
-            })
-            .chain(
-                // 如果启用盲化，则生成随机向量并添加到结果中
-                (0..salt_size)
-                    .into_par_iter()
-                    .map(|_| F::rand_vec(degree << rate_bits)),
-            )
-            .collect()
+         */
+        let mut lde_values = Vec::new();
+        for p in polynomials {
+            // Ensure all polynomials have the same degree
+            assert_eq!(p.len(), degree, "Polynomial degrees inconsistent");
+            // Compute the LDE values and perform the coset FFT transformation
+            let lde_values = p.lde(rate_bits);
+            let coset_fft_values = lde_values.coset_fft_with_options(F::coset_shift(), Some(rate_bits), fft_root_table);
+            let lde = coset_fft_values.values;
+            lde_values.push(lde);
+        }
+
+        if blinding {
+            for _ in 0..salt_size {
+                lde_values.push(F::rand_vec(degree << rate_bits));
+            }
+        }
+        lde_values
     }
 
     /// Fetches LDE values at the `index * step`th point.
@@ -280,5 +299,42 @@ PolynomialBatch<F, C, D>
         );
 
         fri_proof
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use plonky2_field::types::Field;
+    use plonky2_field::goldilocks_field::GoldilocksField;
+    use crate::field::polynomial::PolynomialCoeffs;
+    use crate::plonk::config::PoseidonGoldilocksConfig;
+    use crate::util::timing::TimingTree;
+
+    #[test]
+    fn test_lde_values() {
+        //type F = GoldilocksField;
+        const D: usize = 2;
+        type C = PoseidonGoldilocksConfig;
+        type F = <C as GenericConfig<D>>::F;
+
+        let polynomials = vec![
+            PolynomialCoeffs::new(vec![F::ONE, F::TWO, F::ONE, F::TWO]),
+            PolynomialCoeffs::new(vec![F::ONE, F::TWO, F::ONE, F::TWO]),
+        ];
+        println!("polynomials:{:?}",polynomials);
+
+
+        let rate_bits = 3;
+        let blinding = false;
+        let fft_root_table = None;
+
+
+        let lde_values = PolynomialBatch::<F, C, 2>::lde_values(&polynomials, rate_bits, blinding, fft_root_table);
+
+        // Add assertions to verify the correctness of the lde_values
+        assert_eq!(lde_values.len(), polynomials.len());
+        for lde in lde_values {
+            assert_eq!(lde.len(), polynomials[0].len() << rate_bits);
+        }
     }
 }

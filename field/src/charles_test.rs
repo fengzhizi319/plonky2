@@ -14,6 +14,11 @@ mod tests {
     use rand::rngs::OsRng;
     use rand::Rng;
 
+
+    use crate::polynomial::config::GenericConfig;
+
+
+
     //use super::*;
     use crate::types::Sample;
     #[test]
@@ -302,4 +307,5 @@ mod tests {
             PolynomialCoeffs::new(vec![F::ONE, F::ZERO])
         );
     }
+
 }
