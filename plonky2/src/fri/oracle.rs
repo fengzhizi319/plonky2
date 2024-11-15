@@ -145,18 +145,7 @@ PolynomialBatch<F, C, D>
         }
     }
 
-    /// 计算多项式的低度扩展（LDE）值
-    ///
-    /// # 参数
-    ///
-    /// * `polynomials` - 包含多项式系数的切片
-    /// * `rate_bits` - FRI 配置中的速率位数
-    /// * `blinding` - 是否启用盲化
-    /// * `fft_root_table` - FFT 根表的可选引用
-    ///
-    /// # 返回值
-    ///
-    /// 返回一个包含 LDE 值的向量
+    /// ///先进行低度扩展，在转到陪集上，然后进行FFT变换
     pub(crate) fn lde_values(
         polynomials: &[PolynomialCoeffs<F>],
         rate_bits: usize,
@@ -168,26 +157,30 @@ PolynomialBatch<F, C, D>
 
         // 如果启用盲化，则在每个叶子向量中添加4个随机元素作为盐
         let salt_size = if blinding { SALT_SIZE } else { 0 };
-        /*
+
                 polynomials
                     .par_iter()
                     .map(|p| {
                         // 确保所有多项式的度一致
                         assert_eq!(p.len(), degree, "Polynomial degrees inconsistent");
-                        // 计算多项式的 LDE 值，并进行余弦 FFT 变换
+                        //p.lde(rate_bits)元素个数扩展到以前的2^lde,用0进行填充
+                        //coset_fft_with_options先转到陪集上，然后进行FFT变换
                         p.lde(rate_bits)
                             .coset_fft_with_options(F::coset_shift(), Some(rate_bits), fft_root_table)
                             .values
                     })
                     .chain(
-                        // 如果启用盲化，则生成随机向量并添加到结果中
+                        //在这个示例中，a.iter() 和 b.iter() 是两个迭代器，.chain(b.iter()) 将它们连接在一起，形成一个新的迭代器。
+                        // collect() 方法将这个新的迭代器收集成一个向量。最终输出的向量包含了 a 和 b 中的所有元素
+                        // 如果启用盲化，则生成随机向量并添加到结果中，数据维度保持一致
                         (0..salt_size)
                             .into_par_iter()
                             .map(|_| F::rand_vec(degree << rate_bits)),
                     )
                     .collect()
 
-         */
+
+        /*
         let mut lde_values = Vec::new();
         for p in polynomials {
             // Ensure all polynomials have the same degree
@@ -208,6 +201,8 @@ PolynomialBatch<F, C, D>
             }
         }
         lde_values
+
+         */
     }
 
     /// Fetches LDE values at the `index * step`th point.
