@@ -1584,6 +1584,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
           indices.shrink_to_fit();
       }
 
+
       let num_gate_constraints = gates
           .iter()
           .map(|gate| gate.0.num_constraints())
