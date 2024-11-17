@@ -1510,8 +1510,12 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             .values()
             .flat_map(|current_slot| current_slot.current_slot.values().copied())
             .collect::<HashMap<_, _>>();
+        println!("incomplete_gates:{:?}", incomplete_gates);
+
 
         // Add gate generators.
+        //self.print_generators();
+
         self.add_generators(
             self.gate_instances
                 .iter()
@@ -1526,9 +1530,32 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
                 })
                 .collect(),
         );
+        /*
+        结果为：
+        SimpleGeneratorAdapter { _phantom: PhantomData<plonky2_field::goldilocks_field::GoldilocksField>, inner: ArithmeticBaseGenerator { row: 0, const_0: 1, const_1: 1, i: 0 } }
+        SimpleGeneratorAdapter { _phantom: PhantomData<plonky2_field::goldilocks_field::GoldilocksField>, inner: ArithmeticBaseGenerator { row: 0, const_0: 1, const_1: 1, i: 1 } }
+        SimpleGeneratorAdapter { _phantom: PhantomData<plonky2_field::goldilocks_field::GoldilocksField>, inner: ArithmeticBaseGenerator { row: 0, const_0: 1, const_1: 1, i: 2 } }
+        SimpleGeneratorAdapter { _phantom: PhantomData<plonky2_field::goldilocks_field::GoldilocksField>, inner: ArithmeticBaseGenerator { row: 0, const_0: 1, const_1: 1, i: 3 } }
+        SimpleGeneratorAdapter { _phantom: PhantomData<plonky2_field::goldilocks_field::GoldilocksField>, inner: PoseidonGenerator { row: 1, _phantom: PhantomData<plonky2_field::goldilocks_field::GoldilocksField> } }
+         */
+
+        //self.print_generators();
+
+
+        #[cfg(not(DEBUG_FOR_CHARLES))]
+        {
+            // Print gate counts for each context.
+
+        }
+        #[cfg(DEBUG_FOR_CHARLES)]
+        {
+            // Print gate counts for each context.
+            self.print_gate_counts(1);
+        }
 
         // Index generator indices by their watched targets.
         let mut generator_indices_by_watches = BTreeMap::new();
+        /*
         for (i, generator) in self.generators.iter().enumerate() {
             for watch in generator.0.watch_list() {
                 let watch_index = forest.target_index(watch);
@@ -1539,122 +1566,135 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
                     .push(i);
             }
         }
-        for indices in generator_indices_by_watches.values_mut() {
-            indices.dedup();
-            indices.shrink_to_fit();
-        }
+        */
 
-        let num_gate_constraints = gates
-            .iter()
-            .map(|gate| gate.0.num_constraints())
-            .max()
-            .expect("No gates?");
+      for (i, generator) in self.generators.iter().enumerate() {
+          let watch_list=generator.0.watch_list();
+          for watch in watch_list {
+              let watch_index = forest.target_index(watch);
+              let watch_rep_index = forest.parents[watch_index];
+              generator_indices_by_watches
+                  .entry(watch_rep_index)
+                  .or_insert_with(Vec::new)
+                  .push(i);
+          }
+      }
+      for indices in generator_indices_by_watches.values_mut() {
+          indices.dedup();
+          indices.shrink_to_fit();
+      }
 
-        let num_partial_products =
-            num_partial_products(self.config.num_routed_wires, quotient_degree_factor);
+      let num_gate_constraints = gates
+          .iter()
+          .map(|gate| gate.0.num_constraints())
+          .max()
+          .expect("No gates?");
 
-        let lookup_degree = self.config.max_quotient_degree_factor - 1;
-        let num_lookup_polys = if num_luts == 0 {
-            0
-        } else {
-            // There is 1 RE polynomial and multiple Sum/LDC polynomials.
-            LookupGate::num_slots(&self.config).div_ceil(lookup_degree) + 1
-        };
-        let constants_sigmas_cap = constants_sigmas_commitment.merkle_tree.cap.clone();
-        let domain_separator = self.domain_separator.unwrap_or_default();
-        let domain_separator_digest = C::Hasher::hash_pad(&domain_separator);
-        // TODO: This should also include an encoding of gate constraints.
-        let circuit_digest_parts = [
-            constants_sigmas_cap.flatten(),
-            domain_separator_digest.to_vec(),
-            vec![
-                F::from_canonical_usize(degree_bits),
-                /* Add other circuit data here */
-            ],
-        ];
-        let circuit_digest = C::Hasher::hash_no_pad(&circuit_digest_parts.concat());
+      let num_partial_products =
+          num_partial_products(self.config.num_routed_wires, quotient_degree_factor);
 
-        let common = CommonCircuitData {
-            config: self.config,
-            fri_params,
-            gates,
-            selectors_info,
-            quotient_degree_factor,
-            num_gate_constraints,
-            num_constants,
-            num_public_inputs,
-            k_is,
-            num_partial_products,
-            num_lookup_polys,
-            num_lookup_selectors,
-            luts: self.luts,
-        };
+      let lookup_degree = self.config.max_quotient_degree_factor - 1;
+      let num_lookup_polys = if num_luts == 0 {
+          0
+      } else {
+          // There is 1 RE polynomial and multiple Sum/LDC polynomials.
+          LookupGate::num_slots(&self.config).div_ceil(lookup_degree) + 1
+      };
+      let constants_sigmas_cap = constants_sigmas_commitment.merkle_tree.cap.clone();
+      let domain_separator = self.domain_separator.unwrap_or_default();
+      let domain_separator_digest = C::Hasher::hash_pad(&domain_separator);
+      // TODO: This should also include an encoding of gate constraints.
+      let circuit_digest_parts = [
+          constants_sigmas_cap.flatten(),
+          domain_separator_digest.to_vec(),
+          vec![
+              F::from_canonical_usize(degree_bits),
+              /* Add other circuit data here */
+          ],
+      ];
+      let circuit_digest = C::Hasher::hash_no_pad(&circuit_digest_parts.concat());
 
-        let mut success = true;
+      let common = CommonCircuitData {
+          config: self.config,
+          fri_params,
+          gates,
+          selectors_info,
+          quotient_degree_factor,
+          num_gate_constraints,
+          num_constants,
+          num_public_inputs,
+          k_is,
+          num_partial_products,
+          num_lookup_polys,
+          num_lookup_selectors,
+          luts: self.luts,
+      };
 
-        if let Some(goal_data) = self.goal_common_data {
-            if goal_data != common {
-                warn!("The expected circuit data passed to cyclic recursion method did not match the actual circuit");
-                success = false;
-            }
-        }
+      let mut success = true;
 
-        let prover_only = ProverOnlyCircuitData::<F, C, D> {
-            generators: self.generators,
-            generator_indices_by_watches,
-            constants_sigmas_commitment,
-            sigmas: transpose_poly_values(sigma_vecs),
-            subgroup,
-            public_inputs: self.public_inputs,
-            representative_map: forest.parents,
-            fft_root_table: Some(fft_root_table),
-            circuit_digest,
-            lookup_rows: self.lookup_rows.clone(),
-            lut_to_lookups: self.lut_to_lookups.clone(),
-        };
+      if let Some(goal_data) = self.goal_common_data {
+          if goal_data != common {
+              warn!("The expected circuit data passed to cyclic recursion method did not match the actual circuit");
+              success = false;
+          }
+      }
 
-        let verifier_only = VerifierOnlyCircuitData::<C, D> {
-            constants_sigmas_cap,
-            circuit_digest,
-        };
+      let prover_only = ProverOnlyCircuitData::<F, C, D> {
+          generators: self.generators,
+          generator_indices_by_watches,
+          constants_sigmas_commitment,
+          sigmas: transpose_poly_values(sigma_vecs),
+          subgroup,
+          public_inputs: self.public_inputs,
+          representative_map: forest.parents,
+          fft_root_table: Some(fft_root_table),
+          circuit_digest,
+          lookup_rows: self.lookup_rows.clone(),
+          lut_to_lookups: self.lut_to_lookups.clone(),
+      };
 
-        timing.print();
-        #[cfg(feature = "std")]
-        debug!("Building circuit took {}s", start.elapsed().as_secs_f32());
-        (
-            CircuitData {
-                prover_only,
-                verifier_only,
-                common,
-            },
-            success,
-        )
-    }
+      let verifier_only = VerifierOnlyCircuitData::<C, D> {
+          constants_sigmas_cap,
+          circuit_digest,
+      };
 
-    /// Builds a "full circuit", with both prover and verifier data.
-    pub fn build<C: GenericConfig<D, F = F>>(self) -> CircuitData<F, C, D> {
-        self.build_with_options(true)
-    }
+      timing.print();
+      #[cfg(feature = "std")]
+      debug!("Building circuit took {}s", start.elapsed().as_secs_f32());
+      (
+          CircuitData {
+              prover_only,
+              verifier_only,
+              common,
+          },
+          success,
+      )
+  }
 
-    pub fn mock_build<C: GenericConfig<D, F = F>>(self) -> MockCircuitData<F, C, D> {
-        let circuit_data = self.build_with_options(false);
-        MockCircuitData {
-            prover_only: circuit_data.prover_only,
-            common: circuit_data.common,
-        }
-    }
-    /// Builds a "prover circuit", with data needed to generate proofs but not verify them.
-    pub fn build_prover<C: GenericConfig<D, F = F>>(self) -> ProverCircuitData<F, C, D> {
-        // TODO: Can skip parts of this.
-        let circuit_data = self.build::<C>();
-        circuit_data.prover_data()
-    }
+  /// Builds a "full circuit", with both prover and verifier data.
+  pub fn build<C: GenericConfig<D, F = F>>(self) -> CircuitData<F, C, D> {
+      self.build_with_options(true)
+  }
 
-    /// Builds a "verifier circuit", with data needed to verify proofs but not generate them.
-    pub fn build_verifier<C: GenericConfig<D, F = F>>(self) -> VerifierCircuitData<F, C, D> {
-        // TODO: Can skip parts of this.
-        let circuit_data = self.build::<C>();
-        circuit_data.verifier_data()
-    }
+  pub fn mock_build<C: GenericConfig<D, F = F>>(self) -> MockCircuitData<F, C, D> {
+      let circuit_data = self.build_with_options(false);
+      MockCircuitData {
+          prover_only: circuit_data.prover_only,
+          common: circuit_data.common,
+      }
+  }
+  /// Builds a "prover circuit", with data needed to generate proofs but not verify them.
+  pub fn build_prover<C: GenericConfig<D, F = F>>(self) -> ProverCircuitData<F, C, D> {
+      // TODO: Can skip parts of this.
+      let circuit_data = self.build::<C>();
+      circuit_data.prover_data()
+  }
+
+  /// Builds a "verifier circuit", with data needed to verify proofs but not generate them.
+  pub fn build_verifier<C: GenericConfig<D, F = F>>(self) -> VerifierCircuitData<F, C, D> {
+      // TODO: Can skip parts of this.
+      let circuit_data = self.build::<C>();
+      circuit_data.verifier_data()
+  }
 
 }

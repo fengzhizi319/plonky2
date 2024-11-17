@@ -139,6 +139,7 @@ impl<F: RichField + Extendable<D>, const D: usize> Gate<F, D> for ArithmeticGate
     }
 
     /// ArithmeticGate 的每个算术操作生成一个见证生成器，并将这些生成器收集到一个向量中返回。
+
     fn generators(&self, row: usize, local_constants: &[F]) -> Vec<WitnessGeneratorRef<F, D>> {
         (0..self.num_ops)
             .map(|i| {
@@ -154,6 +155,31 @@ impl<F: RichField + Extendable<D>, const D: usize> Gate<F, D> for ArithmeticGate
             })
             .collect()
     }
+
+
+    /*
+    fn generators(&self, row: usize, local_constants: &[F]) -> Vec<WitnessGeneratorRef<F, D>> {
+        let mut generators = Vec::with_capacity(self.num_ops);
+        for i in 0..self.num_ops {
+
+            let arithmetic_Generator = ArithmeticBaseGenerator {
+                row,
+                const_0: local_constants[0],
+                const_1: local_constants[1],
+                i,
+            };
+            let generator = arithmetic_Generator.adapter();
+            //println!("generator: {:?}", generator);
+            let generator1 = WitnessGeneratorRef::new(generator);
+            //println!("generator: {:?}", generator1);
+
+            //generators.push(WitnessGeneratorRef::new(generator));
+            generators.push(generator1);
+        }
+        //println!("generator: {:?}", generators);
+        generators
+    }
+    */
 
     fn num_wires(&self) -> usize {
         self.num_ops * 4

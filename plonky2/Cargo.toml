@@ -91,3 +91,6 @@ cargo-args = ["--no-deps"]
 
 [lints]
 workspace = true
+
+[package.metadata.cfg]
+DEBUG_FOR_CHARLES = true

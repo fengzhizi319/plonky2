@@ -147,7 +147,8 @@ impl<F: RichField + Extendable<D>, const D: usize> Eq for WitnessGeneratorRef<F,
 
 impl<F: RichField + Extendable<D>, const D: usize> Debug for WitnessGeneratorRef<F, D> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0.id())
+        write!(f, "id: {}, as_ref: {:?}", self.0.id(), self.0.as_ref())
+
     }
 }
 
@@ -239,7 +240,7 @@ pub struct SimpleGeneratorAdapter<
     SG: SimpleGenerator<F, D> + ?Sized,
     const D: usize,
 > {
-    _phantom: PhantomData<F>,
+    _phantom: PhantomData<F>,//是一个标记类型，?Sized类型，用于告诉编译器 SimpleGeneratorAdapter 结构体中实际上包含了类型 F，即使它没有直接存储 F 类型的值。
     inner: SG,
 }
 
