@@ -268,9 +268,8 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
     }
     pub fn print_generators(&self) {
         println!("generators len is {:?}",self.generators.len());
-        for generator in &self.generators {
-
-            println!("{:?}", generator.0);
+        for (index, generator) in self.generators.iter().enumerate() {
+            println!("Generator {}: {:?}", index, generator.0);
         }
     }
     //pub fn print_const_generators(&self)
@@ -1539,10 +1538,11 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         SimpleGeneratorAdapter { _phantom: PhantomData<plonky2_field::goldilocks_field::GoldilocksField>, inner: PoseidonGenerator { row: 1, _phantom: PhantomData<plonky2_field::goldilocks_field::GoldilocksField> } }
          */
 
-        //self.print_generators();
+        self.print_generators();
 
 
-        #[cfg(not(DEBUG_FOR_CHARLES))]
+
+        /*#[cfg(not(DEBUG_FOR_CHARLES))]
         {
             // Print gate counts for each context.
 
@@ -1551,11 +1551,12 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         {
             // Print gate counts for each context.
             self.print_gate_counts(1);
-        }
+        }*/
+        /*
 
         // Index generator indices by their watched targets.
         let mut generator_indices_by_watches = BTreeMap::new();
-        /*
+
         for (i, generator) in self.generators.iter().enumerate() {
             for watch in generator.0.watch_list() {
                 let watch_index = forest.target_index(watch);
@@ -1567,135 +1568,178 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             }
         }
         */
+        // SimpleGeneratorAdapter len is 138,_phantom: PhantomDataplonky2_field::goldilocks_field::GoldilocksField,
+        // Generator 0:  { _phantom: .., inner: RandomValueGenerator { target: Wire(Wire { row: 2, column: 4 }) } }
+        // Generator 1:  { _phantom: .., inner: RandomValueGenerator { target: Wire(Wire { row: 2, column: 5 }) } }
+        //     .
+        //     .
+        //     .
+        // Generator 129:  { _phantom:.., inner: RandomValueGenerator { target: Wire(Wire { row: 2, column: 133 }) } }
+        // Generator 130:  { _phantom:.., inner: RandomValueGenerator { target: Wire(Wire { row: 2, column: 134 }) } }
+        // Generator 131:  { _phantom:.., inner: ConstantGenerator { row: 3, constant_index: 0, wire_index: 0, constant: 0 } }
+        // Generator 132:  { _phantom:.., inner: ConstantGenerator { row: 3, constant_index: 1, wire_index: 1, constant: 1 } }
+        // Generator 133:  { _phantom:.., inner: ArithmeticBaseGenerator { row: 0, const_0: 1, const_1: 1, i: 0 } }
+        // Generator 134:  { _phantom:.., inner: ArithmeticBaseGenerator { row: 0, const_0: 1, const_1: 1, i: 1 } }
+        // Generator 135:  { _phantom:.., inner: ArithmeticBaseGenerator { row: 0, const_0: 1, const_1: 1, i: 2 } }
+        // Generator 136:  { _phantom:.., inner: ArithmeticBaseGenerator { row: 0, const_0: 1, const_1: 1, i: 3 } }
+        // Generator 137:  { _phantom:.., inner: PoseidonGenerator { row: 1, _phantom: PhantomDataplonky2_field::goldilocks_field::GoldilocksField } }
+        // Index generator indices by their watched targets.只选择ArithmeticBaseGenerator中有用的生成器，很多生成器是随机的，并没有实际数据
+        let mut generator_indices_by_watches = BTreeMap::new();
+        for (i, generator) in self.generators.iter().enumerate() {
+            let watch_list=generator.0.watch_list();
+            for watch in watch_list {
+                let watch_index = forest.target_index(watch);
+                let watch_rep_index = forest.parents[watch_index];
+                generator_indices_by_watches
+                    .entry(watch_rep_index)
+                    .or_insert_with(Vec::new)
+                    .push(i);
+            }
+        }
+        //generator_indices_by_watches:
+        // {
+        // 3: [134, 135],
+        // 7: [135, 136],
+        // 11: [136],
+        // 15: [137],
+        // 405: [137, 137, 137, 137, 137, 137, 137, 137, 137, 137],
+        // 406: [133, 134, 135, 136],
+        // 540: [133, 137],
+        // 541: [133, 134, 137]
+        // }
+        //println!("generator_indices_by_watches:{:?}", generator_indices_by_watches);
 
-      for (i, generator) in self.generators.iter().enumerate() {
-          let watch_list=generator.0.watch_list();
-          for watch in watch_list {
-              let watch_index = forest.target_index(watch);
-              let watch_rep_index = forest.parents[watch_index];
-              generator_indices_by_watches
-                  .entry(watch_rep_index)
-                  .or_insert_with(Vec::new)
-                  .push(i);
-          }
-      }
-      for indices in generator_indices_by_watches.values_mut() {
-          indices.dedup();
-          indices.shrink_to_fit();
-      }
+        // 遍历 generator_indices_by_watches 中的所有值
+        for indices in generator_indices_by_watches.values_mut() {
+            // 打印当前的 indices
+            // 移除 indices 中的重复元素
+            indices.dedup();
+            // 缩小 indices 的容量以适应其长度
+            indices.shrink_to_fit();
+        }
+        //:{
+        // 3: [134, 135],
+        // 7: [135, 136],
+        // 11: [136], 15: [137],
+        // 405: [137],
+        // 406: [133, 134, 135, 136],
+        // 540: [133, 137],
+        // 541: [133, 134, 137]
+        // }
+        //println!("after dedup generator_indices_by_watches:{:?}", generator_indices_by_watches);
 
 
-      let num_gate_constraints = gates
-          .iter()
-          .map(|gate| gate.0.num_constraints())
-          .max()
-          .expect("No gates?");
+        let num_gate_constraints = gates
+            .iter()
+            .map(|gate| gate.0.num_constraints())
+            .max()
+            .expect("No gates?");
 
-      let num_partial_products =
-          num_partial_products(self.config.num_routed_wires, quotient_degree_factor);
+        let num_partial_products =
+            num_partial_products(self.config.num_routed_wires, quotient_degree_factor);
 
-      let lookup_degree = self.config.max_quotient_degree_factor - 1;
-      let num_lookup_polys = if num_luts == 0 {
-          0
-      } else {
-          // There is 1 RE polynomial and multiple Sum/LDC polynomials.
-          LookupGate::num_slots(&self.config).div_ceil(lookup_degree) + 1
-      };
-      let constants_sigmas_cap = constants_sigmas_commitment.merkle_tree.cap.clone();
-      let domain_separator = self.domain_separator.unwrap_or_default();
-      let domain_separator_digest = C::Hasher::hash_pad(&domain_separator);
-      // TODO: This should also include an encoding of gate constraints.
-      let circuit_digest_parts = [
-          constants_sigmas_cap.flatten(),
-          domain_separator_digest.to_vec(),
-          vec![
-              F::from_canonical_usize(degree_bits),
-              /* Add other circuit data here */
-          ],
-      ];
-      let circuit_digest = C::Hasher::hash_no_pad(&circuit_digest_parts.concat());
+        let lookup_degree = self.config.max_quotient_degree_factor - 1;
+        let num_lookup_polys = if num_luts == 0 {
+            0
+        } else {
+            // There is 1 RE polynomial and multiple Sum/LDC polynomials.
+            LookupGate::num_slots(&self.config).div_ceil(lookup_degree) + 1
+        };
+        let constants_sigmas_cap = constants_sigmas_commitment.merkle_tree.cap.clone();
+        let domain_separator = self.domain_separator.unwrap_or_default();
+        let domain_separator_digest = C::Hasher::hash_pad(&domain_separator);
+        // TODO: This should also include an encoding of gate constraints.
+        let circuit_digest_parts = [
+            constants_sigmas_cap.flatten(),
+            domain_separator_digest.to_vec(),
+            vec![
+                F::from_canonical_usize(degree_bits),
+                /* Add other circuit data here */
+            ],
+        ];
+        let circuit_digest = C::Hasher::hash_no_pad(&circuit_digest_parts.concat());
 
-      let common = CommonCircuitData {
-          config: self.config,
-          fri_params,
-          gates,
-          selectors_info,
-          quotient_degree_factor,
-          num_gate_constraints,
-          num_constants,
-          num_public_inputs,
-          k_is,
-          num_partial_products,
-          num_lookup_polys,
-          num_lookup_selectors,
-          luts: self.luts,
-      };
+        let common = CommonCircuitData {
+            config: self.config,
+            fri_params,
+            gates,
+            selectors_info,
+            quotient_degree_factor,
+            num_gate_constraints,
+            num_constants,
+            num_public_inputs,
+            k_is,
+            num_partial_products,
+            num_lookup_polys,
+            num_lookup_selectors,
+            luts: self.luts,
+        };
 
-      let mut success = true;
+        let mut success = true;
 
-      if let Some(goal_data) = self.goal_common_data {
-          if goal_data != common {
-              warn!("The expected circuit data passed to cyclic recursion method did not match the actual circuit");
-              success = false;
-          }
-      }
+        if let Some(goal_data) = self.goal_common_data {
+            if goal_data != common {
+                warn!("The expected circuit data passed to cyclic recursion method did not match the actual circuit");
+                success = false;
+            }
+        }
 
-      let prover_only = ProverOnlyCircuitData::<F, C, D> {
-          generators: self.generators,
-          generator_indices_by_watches,
-          constants_sigmas_commitment,
-          sigmas: transpose_poly_values(sigma_vecs),
-          subgroup,
-          public_inputs: self.public_inputs,
-          representative_map: forest.parents,
-          fft_root_table: Some(fft_root_table),
-          circuit_digest,
-          lookup_rows: self.lookup_rows.clone(),
-          lut_to_lookups: self.lut_to_lookups.clone(),
-      };
+        let prover_only = ProverOnlyCircuitData::<F, C, D> {
+            generators: self.generators,
+            generator_indices_by_watches,
+            constants_sigmas_commitment,
+            sigmas: transpose_poly_values(sigma_vecs),
+            subgroup,
+            public_inputs: self.public_inputs,
+            representative_map: forest.parents,
+            fft_root_table: Some(fft_root_table),
+            circuit_digest,
+            lookup_rows: self.lookup_rows.clone(),
+            lut_to_lookups: self.lut_to_lookups.clone(),
+        };
 
-      let verifier_only = VerifierOnlyCircuitData::<C, D> {
-          constants_sigmas_cap,
-          circuit_digest,
-      };
+        let verifier_only = VerifierOnlyCircuitData::<C, D> {
+            constants_sigmas_cap,
+            circuit_digest,
+        };
 
-      timing.print();
-      #[cfg(feature = "std")]
-      debug!("Building circuit took {}s", start.elapsed().as_secs_f32());
-      (
-          CircuitData {
-              prover_only,
-              verifier_only,
-              common,
-          },
-          success,
-      )
-  }
+        timing.print();
+        #[cfg(feature = "std")]
+        debug!("Building circuit took {}s", start.elapsed().as_secs_f32());
+        (
+            CircuitData {
+                prover_only,
+                verifier_only,
+                common,
+            },
+            success,
+        )
+    }
 
-  /// Builds a "full circuit", with both prover and verifier data.
-  pub fn build<C: GenericConfig<D, F = F>>(self) -> CircuitData<F, C, D> {
-      self.build_with_options(true)
-  }
+    /// Builds a "full circuit", with both prover and verifier data.
+    pub fn build<C: GenericConfig<D, F = F>>(self) -> CircuitData<F, C, D> {
+        self.build_with_options(true)
+    }
 
-  pub fn mock_build<C: GenericConfig<D, F = F>>(self) -> MockCircuitData<F, C, D> {
-      let circuit_data = self.build_with_options(false);
-      MockCircuitData {
-          prover_only: circuit_data.prover_only,
-          common: circuit_data.common,
-      }
-  }
-  /// Builds a "prover circuit", with data needed to generate proofs but not verify them.
-  pub fn build_prover<C: GenericConfig<D, F = F>>(self) -> ProverCircuitData<F, C, D> {
-      // TODO: Can skip parts of this.
-      let circuit_data = self.build::<C>();
-      circuit_data.prover_data()
-  }
+    pub fn mock_build<C: GenericConfig<D, F = F>>(self) -> MockCircuitData<F, C, D> {
+        let circuit_data = self.build_with_options(false);
+        MockCircuitData {
+            prover_only: circuit_data.prover_only,
+            common: circuit_data.common,
+        }
+    }
+    /// Builds a "prover circuit", with data needed to generate proofs but not verify them.
+    pub fn build_prover<C: GenericConfig<D, F = F>>(self) -> ProverCircuitData<F, C, D> {
+        // TODO: Can skip parts of this.
+        let circuit_data = self.build::<C>();
+        circuit_data.prover_data()
+    }
 
-  /// Builds a "verifier circuit", with data needed to verify proofs but not generate them.
-  pub fn build_verifier<C: GenericConfig<D, F = F>>(self) -> VerifierCircuitData<F, C, D> {
-      // TODO: Can skip parts of this.
-      let circuit_data = self.build::<C>();
-      circuit_data.verifier_data()
-  }
+    /// Builds a "verifier circuit", with data needed to verify proofs but not generate them.
+    pub fn build_verifier<C: GenericConfig<D, F = F>>(self) -> VerifierCircuitData<F, C, D> {
+        // TODO: Can skip parts of this.
+        let circuit_data = self.build::<C>();
+        circuit_data.verifier_data()
+    }
 
 }

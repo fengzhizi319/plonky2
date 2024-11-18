@@ -234,15 +234,21 @@ for ArithmeticBaseGenerator<F, D>
         "ArithmeticBaseGenerator".to_string()
     }
 
+    /// 获取当前生成器的依赖项
+    ///
+    /// # 返回值
+    ///
+    /// 返回一个包含依赖项目标的向量
     fn dependencies(&self) -> Vec<Target> {
+        // 创建一个包含乘数、加数的线索引数组
         [
-            ArithmeticGate::wire_ith_multiplicand_0(self.i),
-            ArithmeticGate::wire_ith_multiplicand_1(self.i),
-            ArithmeticGate::wire_ith_addend(self.i),
+            ArithmeticGate::wire_ith_multiplicand_0(self.i), // 第 i 个操作的第一个乘数的线索引，4*i
+            ArithmeticGate::wire_ith_multiplicand_1(self.i), // 第 i 个操作的第二个乘数的线索引，4*i+1
+            ArithmeticGate::wire_ith_addend(self.i),         // 第 i 个操作的addend的线索引，4*i+2
         ]
-            .iter()
-            .map(|&i| Target::wire(self.row, i))
-            .collect()
+            .iter() // 创建一个迭代器
+            .map(|&i| Target::wire(self.row, i)) // 将线索引映射为目标
+            .collect() // 收集结果到向量中
     }
 
     fn run_once(
