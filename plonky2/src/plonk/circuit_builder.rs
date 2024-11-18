@@ -1647,9 +1647,12 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             // There is 1 RE polynomial and multiple Sum/LDC polynomials.
             LookupGate::num_slots(&self.config).div_ceil(lookup_degree) + 1
         };
+        //println!("digests:{:?}", constants_sigmas_commitment.merkle_tree.digests);
         let constants_sigmas_cap = constants_sigmas_commitment.merkle_tree.cap.clone();
         let domain_separator = self.domain_separator.unwrap_or_default();
         let domain_separator_digest = C::Hasher::hash_pad(&domain_separator);
+        //println! domain_separator_digest
+        //domain_separator_digest:HashOut { elements: [17991175719798147782, 8070818897336839234, 4124482534957538613, 3057072752517167139] }
         // TODO: This should also include an encoding of gate constraints.
         let circuit_digest_parts = [
             constants_sigmas_cap.flatten(),
@@ -1659,6 +1662,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
                 /* Add other circuit data here */
             ],
         ];
+
         let circuit_digest = C::Hasher::hash_no_pad(&circuit_digest_parts.concat());
 
         let common = CommonCircuitData {
