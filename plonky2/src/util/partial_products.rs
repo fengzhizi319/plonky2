@@ -43,6 +43,7 @@ pub(crate) fn num_partial_products(n: usize, max_degree: usize) -> usize {
     // We'll split the product into `n.div_ceil( chunk_size)` chunks, but the last chunk will
     // be associated with Z(gx) itself. Thus we subtract one to get the chunks associated with
     // partial products.
+    //div_ceil整除上取整，整除下取整为div_floor
     n.div_ceil(chunk_size) - 1
 }
 

@@ -43,21 +43,20 @@ impl<F: RichField, H: Hasher<F>> MerkleCap<F, H> {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+/// MerkleTree 结构体，用于表示 Merkle 树。
 pub struct MerkleTree<F: RichField, H: Hasher<F>> {
-    /// The data in the leaves of the Merkle tree.
+    /// Merkle 树叶子节点的数据。
     pub leaves: Vec<Vec<F>>,
 
-    /// The digests in the tree. Consists of `cap.len()` sub-trees, each corresponding to one
-    /// element in `cap`. Each subtree is contiguous and located at
-    /// `digests[digests.len() / cap.len() * i..digests.len() / cap.len() * (i + 1)]`.
-    /// Within each subtree, siblings are stored next to each other. The layout is,
-    /// left_child_subtree || left_child_digest || right_child_digest || right_child_subtree, where
-    /// left_child_digest and right_child_digest are H::Hash and left_child_subtree and
-    /// right_child_subtree recurse. Observe that the digest of a node is stored by its _parent_.
-    /// Consequently, the digests of the roots are not stored here (they can be found in `cap`).
+    /// 树中的哈希值。由 `cap.len()` 个子树组成，每个子树对应 `cap` 中的一个元素。
+    /// 每个子树是连续存储的，位于 `digests[digests.len() / cap.len() * i..digests.len() / cap.len() * (i + 1)]`。
+    /// 在每个子树中，兄弟节点是相邻存储的。布局为：
+    /// 左子树 || 左子节点哈希值 || 右子节点哈希值 || 右子树，
+    /// 其中左子节点哈希值和右子节点哈希值是 H::Hash 类型，左子树和右子树是递归的。
+    /// 注意，节点的哈希值是由其父节点存储的。因此，根节点的哈希值不存储在这里（可以在 `cap` 中找到）。
     pub digests: Vec<H::Hash>,
 
-    /// The Merkle cap.
+    /// Merkle 树的顶层节点（Merkle cap）。
     pub cap: MerkleCap<F, H>,
 }
 

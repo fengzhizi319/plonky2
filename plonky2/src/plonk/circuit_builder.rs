@@ -1538,7 +1538,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         SimpleGeneratorAdapter { _phantom: PhantomData<plonky2_field::goldilocks_field::GoldilocksField>, inner: PoseidonGenerator { row: 1, _phantom: PhantomData<plonky2_field::goldilocks_field::GoldilocksField> } }
          */
 
-        self.print_generators();
+        //self.print_generators();
 
 
 
@@ -1628,16 +1628,18 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // }
         //println!("after dedup generator_indices_by_watches:{:?}", generator_indices_by_watches);
 
+        // num_constraints:2,4,20,123
 
         let num_gate_constraints = gates
             .iter()
             .map(|gate| gate.0.num_constraints())
             .max()
             .expect("No gates?");
-
+        //80/8-1=9
         let num_partial_products =
             num_partial_products(self.config.num_routed_wires, quotient_degree_factor);
 
+        //7=8-1
         let lookup_degree = self.config.max_quotient_degree_factor - 1;
         let num_lookup_polys = if num_luts == 0 {
             0
