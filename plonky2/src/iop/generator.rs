@@ -23,6 +23,17 @@ use crate::util::serialization::{Buffer, IoResult, Read, Write};
 
 /// Given a `PartitionWitness` that has only inputs set, populates the rest of the witness using the
 /// given set of generators.
+/// 生成部分见证（witness）
+///
+/// 给定一个仅设置了输入的 `PartitionWitness`，使用给定的生成器集合填充其余的见证。
+///
+/// # 参数
+/// - `inputs`: 包含输入值的部分见证。
+/// - `prover_data`: 包含生成器和其他证明者相关数据的结构体。
+/// - `common_data`: 包含公共电路数据的结构体。
+///
+/// # 返回
+/// 返回一个填充了所有值的 `PartitionWitness`。
 pub fn generate_partial_witness<
     'a,
     F: RichField + Extendable<D>,
@@ -33,31 +44,40 @@ pub fn generate_partial_witness<
     prover_data: &'a ProverOnlyCircuitData<F, C, D>,
     common_data: &'a CommonCircuitData<F, D>,
 ) -> Result<PartitionWitness<'a, F>> {
+    // 获取电路配置
     let config = &common_data.config;
+    // 获取生成器集合
     let generators = &prover_data.generators;
+    //println!("generators:{:?}", generators);
+    // 获取按监视目标索引的生成器索引
     let generator_indices_by_watches = &prover_data.generator_indices_by_watches;
 
+    // 创建一个新的见证
     let mut witness = PartitionWitness::new(
         config.num_wires,
         common_data.degree(),
         &prover_data.representative_map,
     );
+    //println!("representative_map:{:?}", prover_data.representative_map);
 
+    // 设置输入目标的值
+    //println!("target_values:{:?}", inputs.target_values);
     for (t, v) in inputs.target_values.into_iter() {
         witness.set_target(t, v)?;
     }
+    //println!("witness_values:{:?}", witness.values);
 
-    // Build a list of "pending" generators which are queued to be run. Initially, all generators
-    // are queued.
+    // 构建一个“待处理”生成器列表，初始时所有生成器都在队列中
     let mut pending_generator_indices: Vec<_> = (0..generators.len()).collect();
 
-    // We also track a list of "expired" generators which have already returned false.
+    // 跟踪已经返回 false 的“过期”生成器列表
     let mut generator_is_expired = vec![false; generators.len()];
     let mut remaining_generators = generators.len();
 
+    // 创建一个空的生成值缓冲区
     let mut buffer = GeneratedValues::empty();
 
-    // Keep running generators until we fail to make progress.
+    // 持续运行生成器，直到无法取得进展
     while !pending_generator_indices.is_empty() {
         let mut next_pending_generator_indices = Vec::new();
 
@@ -66,21 +86,28 @@ pub fn generate_partial_witness<
                 continue;
             }
 
-            let finished = generators[generator_idx].0.run(&witness, &mut buffer);
+            // 运行生成器
+            println!("generator_idx:{:?},{:?}", generator_idx,generators[generator_idx].0);
+            let generator = &generators[generator_idx].0;
+            let finished = generator.run(&witness, &mut buffer);
+            //let finished = generators[generator_idx].0.run(&witness, &mut buffer);
+            // if generator_idx >= 129 {
+            //     println!("out buffer:{:?}", buffer);
+            // }
+            //println!("out buffer:{:?}", buffer);
             if finished {
                 generator_is_expired[generator_idx] = true;
                 remaining_generators -= 1;
             }
 
-            // Merge any generated values into our witness, and get a list of newly-populated
-            // targets' representatives.
+            // 将生成的值合并到见证中，并获取新填充目标的代表列表
             let mut new_target_reps = Vec::with_capacity(buffer.target_values.len());
             for (t, v) in buffer.target_values.drain(..) {
                 let reps = witness.set_target_returning_rep(t, v)?;
                 new_target_reps.extend(reps);
             }
 
-            // Enqueue unfinished generators that were watching one of the newly populated targets.
+            // 将监视新填充目标的未完成生成器加入队列
             for watch in new_target_reps {
                 let opt_watchers = generator_indices_by_watches.get(&watch);
                 if let Some(watchers) = opt_watchers {
@@ -96,6 +123,7 @@ pub fn generate_partial_witness<
         pending_generator_indices = next_pending_generator_indices;
     }
 
+    // 检查是否所有生成器都已运行
     if remaining_generators != 0 {
         return Err(anyhow!("{} generators weren't run", remaining_generators));
     }
@@ -167,7 +195,6 @@ impl<F: Field> From<Vec<(Target, F)>> for GeneratedValues<F> {
 impl<F: Field> WitnessWrite<F> for GeneratedValues<F> {
     fn set_target(&mut self, target: Target, value: F) -> Result<()> {
         self.target_values.push((target, value));
-
         Ok(())
     }
 }
@@ -256,9 +283,15 @@ for SimpleGeneratorAdapter<F, SG, D>
     }
 
     fn run(&self, witness: &PartitionWitness<F>, out_buffer: &mut GeneratedValues<F>) -> bool {
-        if witness.contains_all(&self.inner.dependencies()) {
+        // 检查见证是否包含所有依赖项
+        println!("inner:{:?}", self.inner);
+        let depen=self.inner.dependencies();
+        //if witness.contains_all(&self.inner.dependencies()) {
+        if witness.contains_all(&depen) {
+            // 运行生成器一次，并检查是否成功
             self.inner.run_once(witness, out_buffer).is_ok()
         } else {
+            // 如果见证不包含所有依赖项，返回 false
             false
         }
     }
@@ -291,12 +324,25 @@ impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F, D> for Cop
         vec![self.src]
     }
 
+    /// `run_once` 方法从 `witness` 中获取一个值，并将其设置到 `out_buffer` 中。
+    ///
+    /// # 参数
+    ///
+    /// * `&self` - 方法的所有者。
+    /// * `witness` - 一个 `PartitionWitness<F>` 类型的引用，用于获取目标值。
+    /// * `out_buffer` - 一个可变引用，类型为 `GeneratedValues<F>`，用于存储生成的值。
+    ///
+    /// # 返回值
+    ///
+    /// 返回一个 `Result<()>`，表示操作是否成功。
     fn run_once(
         &self,
         witness: &PartitionWitness<F>,
         out_buffer: &mut GeneratedValues<F>,
     ) -> Result<()> {
+        // 从 `witness` 中获取与 `self.src` 相关联的目标值。
         let value = witness.get_target(self.src);
+        // 将获取到的值设置到 `out_buffer` 中与 `self.dst` 相关联的目标位置。
         out_buffer.set_target(self.dst, value)
     }
 
@@ -332,7 +378,9 @@ impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F, D> for Ran
         _witness: &PartitionWitness<F>,
         out_buffer: &mut GeneratedValues<F>,
     ) -> Result<()> {
+        // 生成一个随机值
         let random_value = F::rand();
+        // 将生成的随机值设置到目标位置
         out_buffer.set_target(self.target, random_value)
     }
 
@@ -362,19 +410,25 @@ impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F, D> for Non
         vec![self.to_test]
     }
 
+    /// `run_once` 方法从 `witness` 中获取一个值，并根据该值计算一个新的值，将其设置到 `out_buffer` 中。
     fn run_once(
         &self,
         witness: &PartitionWitness<F>,
         out_buffer: &mut GeneratedValues<F>,
     ) -> Result<()> {
+        // 从 `witness` 中获取与 `self.to_test` 相关联的目标值。
         let to_test_value = witness.get_target(self.to_test);
 
+        // 根据获取到的值计算一个新的值。
         let dummy_value = if to_test_value == F::ZERO {
+            // 如果值为零，则设置为一。
             F::ONE
         } else {
+            // 否则，计算该值的逆。
             to_test_value.inverse()
         };
 
+        // 将计算出的值设置到 `out_buffer` 中与 `self.dummy` 相关联的目标位置。
         out_buffer.set_target(self.dummy, dummy_value)
     }
 
@@ -425,12 +479,14 @@ impl<F: RichField + Extendable<D>, const D: usize> SimpleGenerator<F, D> for Con
     fn dependencies(&self) -> Vec<Target> {
         vec![]
     }
+    /// `run_once` 方法将一个常量值设置到 `out_buffer` 中。
 
     fn run_once(
         &self,
         _witness: &PartitionWitness<F>,
         out_buffer: &mut GeneratedValues<F>,
     ) -> Result<()> {
+        // 将常量值设置到 `out_buffer` 中与指定行和线索索引相关联的目标位置。
         out_buffer.set_target(Target::wire(self.row, self.wire_index), self.constant)
     }
 

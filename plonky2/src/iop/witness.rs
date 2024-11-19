@@ -271,11 +271,21 @@ pub trait Witness<F: Field>: WitnessWrite<F> {
     }
 
     fn contains(&self, target: Target) -> bool {
+        //self.try_get_target(target)：尝试获取目标的值，如果存在则返回 Some(value)，否则返回 None。
+        // .is_some()：检查返回值是否为 Some，如果是则表示目标存在，返回 true，否则返回 false。
         self.try_get_target(target).is_some()
     }
 
     fn contains_all(&self, targets: &[Target]) -> bool {
-        targets.iter().all(|&t| self.contains(t))
+        //使用迭代器遍历目标数组中的每一个目标，并检查每个目标是否都存在于当前对象中
+        //对迭代器中的每一个元素应用闭包 |&t| self.contains(t)，如果所有元素都满足条件（即 self.contains(t) 返回 true），则返回 true，否则返回 false。
+        //targets.iter().all(|&t| self.contains(t))
+        for i in 0..targets.len() {
+            if !self.contains(targets[i]) {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -329,11 +339,21 @@ impl<F: Field> Witness<F> for PartialWitness<F> {
 
 /// `PartitionWitness` holds a disjoint-set forest of the targets respecting a circuit's copy constraints.
 /// The value of a target is defined to be the value of its root in the forest.
+/// `PartitionWitness` 结构体用于表示电路中目标值的分区见证。
+/// 它包含一个不相交集森林，遵循电路的复制约束。
+/// 目标的值被定义为其在森林中的根节点的值。
 #[derive(Clone, Debug)]
 pub struct PartitionWitness<'a, F: Field> {
+    /// 存储每个代表索引的值。如果值为 `None`，表示该索引尚未设置值。
     pub values: Vec<Option<F>>,
+
+    /// 存储每个目标的代表索引的映射。
     pub representative_map: &'a [usize],
+
+    /// 电路中的线数量。
     pub num_wires: usize,
+
+    /// 电路的度数。
     pub degree: usize,
 }
 
@@ -349,21 +369,31 @@ impl<'a, F: Field> PartitionWitness<'a, F> {
 
     /// Set a `Target`. On success, returns the representative index of the newly-set target. If the
     /// target was already set, returns `None`.
+    /// 设置目标值并返回代表索引
+
     pub fn set_target_returning_rep(&mut self, target: Target, value: F) -> Result<Option<usize>> {
-        let rep_index = self.representative_map[self.target_index(target)];
+        // 获取目标的代表索引
+        let  index = self.target_index(target);
+        //let rep_index = self.representative_map[self.target_index(target)];
+        let rep_index = self.representative_map[index];
+        // 获取代表索引对应的值
         let rep_value = &mut self.values[rep_index];
+
+        // 如果代表索引已经有值
         if let Some(old_value) = *rep_value {
+            // 如果新值与旧值不同，返回错误
             if value != old_value {
                 return Err(anyhow!(
-                    "Partition containing {:?} was set twice with different values: {} != {}",
-                    target,
-                    old_value,
-                    value
-                ));
+                "Partition containing {:?} was set twice with different values: {} != {}",
+                target,
+                old_value,
+                value
+            ));
             }
-
+            // 如果新值与旧值相同，返回 None
             Ok(None)
         } else {
+            // 如果代表索引没有值，设置新值并返回代表索引
             *rep_value = Some(value);
             Ok(Some(rep_index))
         }
@@ -390,6 +420,11 @@ impl<'a, F: Field> PartitionWitness<'a, F> {
 
 impl<F: Field> WitnessWrite<F> for PartitionWitness<'_, F> {
     fn set_target(&mut self, target: Target, value: F) -> Result<()> {
+        //set_target_returning_rep 方法返回一个 Result<Option<usize>> 类型，
+        // 表示操作可能成功或失败，并且可能返回一个代表索引。
+        // map(|_| ())：如果 set_target_returning_rep 方法成功（即返回 Ok），
+        // 则将返回的 Option<usize> 映射为 ()，表示操作成功但不关心具体的返回值。
+        // 如果 set_target_returning_rep 方法失败（即返回 Err），则错误会被直接传递。
         self.set_target_returning_rep(target, value).map(|_| ())
     }
 }

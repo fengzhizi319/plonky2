@@ -251,22 +251,41 @@ for ArithmeticBaseGenerator<F, D>
             .collect() // 收集结果到向量中
     }
 
+    /// `run_once` 方法计算算术操作并将结果设置到 `out_buffer` 中。
+    ///
+    /// # 参数
+    ///
+    /// * `&self` - 方法的所有者。
+    /// * `witness` - 一个 `PartitionWitness<F>` 类型的引用，用于获取目标值。
+    /// * `out_buffer` - 一个可变引用，类型为 `GeneratedValues<F>`，用于存储生成的值。
+    ///
+    /// # 返回值
+    ///
+    /// 返回一个 `Result<()>`，表示操作是否成功。
     fn run_once(
         &self,
         witness: &PartitionWitness<F>,
         out_buffer: &mut GeneratedValues<F>,
     ) -> Result<()> {
+        // 定义一个闭包函数，用于获取指定线的值。
         let get_wire = |wire: usize| -> F { witness.get_target(Target::wire(self.row, wire)) };
 
+
+        //获取第 i 个乘数 0 的值。
         let multiplicand_0 = get_wire(ArithmeticGate::wire_ith_multiplicand_0(self.i));
+        //获取第 i 个乘数 1 的值。
         let multiplicand_1 = get_wire(ArithmeticGate::wire_ith_multiplicand_1(self.i));
+        //获取第 i 个加数的值。
         let addend = get_wire(ArithmeticGate::wire_ith_addend(self.i));
 
+        // 获取输出目标所在的线。
         let output_target = Target::wire(self.row, ArithmeticGate::wire_ith_output(self.i));
-
+        //println!("output_target:{:?}", output_target);
+        // 计算输出值：乘数 0 * 乘数 1 * 常数 0 + 加数 * 常数 1。
         let computed_output =
             multiplicand_0 * multiplicand_1 * self.const_0 + addend * self.const_1;
-
+        //println!("computed_output:{:?}", computed_output);
+        // 将计算出的值设置到 `out_buffer` 中对应的目标位置。
         out_buffer.set_target(output_target, computed_output)
     }
 
