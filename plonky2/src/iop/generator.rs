@@ -51,6 +51,14 @@ pub fn generate_partial_witness<
     //println!("generators:{:?}", generators);
     // 获取按监视目标索引的生成器索引
     let generator_indices_by_watches = &prover_data.generator_indices_by_watches;
+    //println!("generator_indices_by_watches:{:?}", generator_indices_by_watches);
+    // 3: [134, 135],
+    // 7: [135, 136],
+    // 11: [136], 15: [137],
+    // 405: [137],
+    // 406: [133, 134, 135, 136],
+    // 540: [133, 137],
+    // 541: [133, 134, 137]
 
     // 创建一个新的见证
     let mut witness = PartitionWitness::new(
@@ -60,7 +68,7 @@ pub fn generate_partial_witness<
     );
     //println!("representative_map:{:?}", prover_data.representative_map);
 
-    // 设置输入目标的值
+    // 设置输入目标的值，这样所有相同约束的目标都会被设置
     //println!("target_values:{:?}", inputs.target_values);
     for (t, v) in inputs.target_values.into_iter() {
         witness.set_target(t, v)?;
@@ -108,7 +116,15 @@ pub fn generate_partial_witness<
             }
 
             // 将监视新填充目标的未完成生成器加入队列
+            println!("new_target_reps:{:?}", new_target_reps);
             for watch in new_target_reps {
+                // 3: [134, 135],
+                // 7: [135, 136],
+                // 11: [136], 15: [137],
+                // 405: [137],
+                // 406: [133, 134, 135, 136],
+                // 540: [133, 137],
+                // 541: [133, 134, 137]
                 let opt_watchers = generator_indices_by_watches.get(&watch);
                 if let Some(watchers) = opt_watchers {
                     for &watching_generator_idx in watchers {
