@@ -200,23 +200,33 @@ where
 
     // We need 4 values per challenge: 2 for the combos, 1 for (X-combo) in the accumulators and 1 to prove that the lookup table was computed correctly.
     // We can reuse betas and gammas for two of them.
+    // 每个挑战需要4个值：2个用于组合，1个用于累加器中的(X-combo)，1个用于验证查找表的正确性。
+    // 我们可以重用betas和gammas中的两个。
     let num_lookup_challenges = NUM_COINS_LOOKUP * num_challenges;
 
+    // 获取num_challenges个挑战值作为betas
     let betas = challenger.get_n_challenges(num_challenges);
+    // 获取num_challenges个挑战值作为gammas
     let gammas = challenger.get_n_challenges(num_challenges);
 
+    // 如果有查找表，则需要额外的挑战值
     let deltas = if has_lookup {
+        // 创建一个容量为2*num_challenges的向量来存储deltas
         let mut delts = Vec::with_capacity(2 * num_challenges);
+        // 计算需要的额外挑战值数量
         let num_additional_challenges = num_lookup_challenges - 2 * num_challenges;
+        // 获取额外的挑战值
         let additional = challenger.get_n_challenges(num_additional_challenges);
+        // 将betas和gammas扩展到deltas中
         delts.extend(&betas);
         delts.extend(&gammas);
+        // 将额外的挑战值扩展到deltas中
         delts.extend(additional);
         delts
     } else {
+        // 如果没有查找表，则deltas为空
         vec![]
     };
-
     assert!(
         common_data.quotient_degree_factor < common_data.config.num_routed_wires,
         "When the number of routed wires is smaller that the degree, we should change the logic to avoid computing partial products."
