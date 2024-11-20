@@ -37,11 +37,13 @@ impl<F: RichField, H: Hasher<F>> Challenger<F, H> {
     }
 
     pub fn observe_element(&mut self, element: F) {
-        // Any buffered outputs are now invalid, since they wouldn't reflect this input.
+        // 任何缓冲的输出现在都无效，因为它们不会反映此输入。
         self.output_buffer.clear();
 
+        // 将元素添加到输入缓冲区
         self.input_buffer.push(element);
 
+        // 如果输入缓冲区的长度达到了置换的速率，则进行双工操作
         if self.input_buffer.len() == H::Permutation::RATE {
             self.duplexing();
         }
@@ -80,15 +82,17 @@ impl<F: RichField, H: Hasher<F>> Challenger<F, H> {
     }
 
     pub fn get_challenge(&mut self) -> F {
-        // If we have buffered inputs, we must perform a duplexing so that the challenge will
-        // reflect them. Or if we've run out of outputs, we must perform a duplexing to get more.
+        // 如果我们有缓冲的输入，我们必须进行双工操作，以便挑战反映它们。
+        // 或者如果我们已经用完了输出，我们必须进行双工操作以获得更多输出。
         if !self.input_buffer.is_empty() || self.output_buffer.is_empty() {
             self.duplexing();
         }
 
+        // 从输出缓冲区弹出一个元素作为挑战。
+        // 确保输出缓冲区非空。
         self.output_buffer
             .pop()
-            .expect("Output buffer should be non-empty")
+            .expect("输出缓冲区应为非空")
     }
 
     pub fn get_n_challenges(&mut self, n: usize) -> Vec<F> {
@@ -126,28 +130,40 @@ impl<F: RichField, H: Hasher<F>> Challenger<F, H> {
 
     /// Absorb any buffered inputs. After calling this, the input buffer will be empty, and the
     /// output buffer will be full.
+    /// 吸收所有缓冲的输入。调用此函数后，输入缓冲区将为空，输出缓冲区将满。
     fn duplexing(&mut self) {
+        // 确保输入缓冲区的长度不超过置换的速率。
         assert!(self.input_buffer.len() <= H::Permutation::RATE);
 
+        // 用输入覆盖前 r 个元素。这与标准的海绵函数不同，标准海绵函数会对输入进行异或或加法操作。
+        // 这种变体有时被称为“覆盖模式”。
         // Overwrite the first r elements with the inputs. This differs from a standard sponge,
         // where we would xor or add in the inputs. This is a well-known variant, though,
         // sometimes called "overwrite mode".
         self.sponge_state
             .set_from_iter(self.input_buffer.drain(..), 0);
 
-        // Apply the permutation.
+        // 应用置换操作。
         self.sponge_state.permute();
 
+        // 清空输出缓冲区。
         self.output_buffer.clear();
+        // 将置换后的结果扩展到输出缓冲区。
         self.output_buffer
             .extend_from_slice(self.sponge_state.squeeze());
     }
 
+    /// 压缩当前的海绵状态。
+    /// 如果输入缓冲区不为空，则首先进行双工操作以吸收所有缓冲的输入。
+    /// 然后清空输出缓冲区，并返回当前的海绵状态。
     pub fn compact(&mut self) -> H::Permutation {
+        // 如果输入缓冲区不为空，则进行双工操作以吸收所有缓冲的输入。
         if !self.input_buffer.is_empty() {
             self.duplexing();
         }
+        // 清空输出缓冲区，因为它们现在无效。
         self.output_buffer.clear();
+        // 返回当前的海绵状态。
         self.sponge_state
     }
 }
@@ -171,7 +187,7 @@ pub struct RecursiveChallenger<F: RichField + Extendable<D>, H: AlgebraicHasher<
 }
 
 impl<F: RichField + Extendable<D>, H: AlgebraicHasher<F>, const D: usize>
-    RecursiveChallenger<F, H, D>
+RecursiveChallenger<F, H, D>
 {
     pub fn new(builder: &mut CircuitBuilder<F, D>) -> Self {
         let zero = builder.zero();
