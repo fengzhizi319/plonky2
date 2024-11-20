@@ -191,7 +191,7 @@ pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>
          */
         let len1=start + size;
         let len2=size + gates[start + size].0.degree();
-        println!("len1:{},len2:{}",len1,len2);
+        //println!("len1:{},len2:{}",len1,len2);
         while (start + size < gates.len()) && (size + gates[start + size].0.degree() < max_degree) {
             size += 1;
         }
@@ -199,7 +199,7 @@ pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>
         start += size;
     }
     //groups:[0..3, 3..4]
-    println!("groups:{:?}", groups);
+    //println!("groups:{:?}", groups);
 
     // 定义了一个闭包（匿名函数），用于根据门的索引获取该门所在的组的索引。
     let group = |i| groups.iter().position(|range| range.contains(&i)).unwrap();

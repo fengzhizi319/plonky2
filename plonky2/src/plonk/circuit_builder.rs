@@ -1171,7 +1171,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         }
         //println!("merge forest:{:?}", forest);
 
-        // 压缩森林中的路径
+        // 压缩森林中的路径，即相同的拷贝约束全部指向同一个parent
         forest.compress_paths();
         //println!("compress_paths forest:{:?}", forest);
 
@@ -1509,7 +1509,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             .values()
             .flat_map(|current_slot| current_slot.current_slot.values().copied())
             .collect::<HashMap<_, _>>();
-        println!("incomplete_gates:{:?}", incomplete_gates);
+        //println!("incomplete_gates:{:?}", incomplete_gates);
 
 
         // Add gate generators.
@@ -1540,34 +1540,6 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
         //self.print_generators();
 
-
-
-        /*#[cfg(not(DEBUG_FOR_CHARLES))]
-        {
-            // Print gate counts for each context.
-
-        }
-        #[cfg(DEBUG_FOR_CHARLES)]
-        {
-            // Print gate counts for each context.
-            self.print_gate_counts(1);
-        }*/
-        /*
-
-        // Index generator indices by their watched targets.
-        let mut generator_indices_by_watches = BTreeMap::new();
-
-        for (i, generator) in self.generators.iter().enumerate() {
-            for watch in generator.0.watch_list() {
-                let watch_index = forest.target_index(watch);
-                let watch_rep_index = forest.parents[watch_index];
-                generator_indices_by_watches
-                    .entry(watch_rep_index)
-                    .or_insert_with(Vec::new)
-                    .push(i);
-            }
-        }
-        */
         // SimpleGeneratorAdapter len is 138,_phantom: PhantomDataplonky2_field::goldilocks_field::GoldilocksField,
         // Generator 0:  { _phantom: .., inner: RandomValueGenerator { target: Wire(Wire { row: 2, column: 4 }) } }
         // Generator 1:  { _phantom: .., inner: RandomValueGenerator { target: Wire(Wire { row: 2, column: 5 }) } }
@@ -1584,6 +1556,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // Generator 136:  { _phantom:.., inner: ArithmeticBaseGenerator { row: 0, const_0: 1, const_1: 1, i: 3 } }
         // Generator 137:  { _phantom:.., inner: PoseidonGenerator { row: 1, _phantom: PhantomDataplonky2_field::goldilocks_field::GoldilocksField } }
         // Index generator indices by their watched targets.只选择ArithmeticBaseGenerator中有用的生成器，很多生成器是随机的，并没有实际数据
+
         let mut generator_indices_by_watches = BTreeMap::new();
         for (i, generator) in self.generators.iter().enumerate() {
             let watch_list=generator.0.watch_list();
@@ -1596,6 +1569,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
                     .push(i);
             }
         }
+
         //generator_indices_by_watches:
         // {
         // 3: [134, 135],

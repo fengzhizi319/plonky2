@@ -52,13 +52,21 @@ pub fn generate_partial_witness<
     // 获取按监视目标索引的生成器索引
     let generator_indices_by_watches = &prover_data.generator_indices_by_watches;
     //println!("generator_indices_by_watches:{:?}", generator_indices_by_watches);
-    // 3: [134, 135],
-    // 7: [135, 136],
-    // 11: [136], 15: [137],
-    // 405: [137],
-    // 406: [133, 134, 135, 136],
-    // 540: [133, 137],
-    // 541: [133, 134, 137]
+    /*
+    //解释
+    540: [133, 137],
+    540表示在forest中的第540个parent。
+    133表示generator的编号。
+    因此540: [133, 137]表示，133，137个generator中，有parent为540的wire。
+    generator_indices_by_watches：
+    3: [134, 135],
+    7: [135, 136],
+    11: [136], 15: [137],
+    405: [137],
+    406: [133, 134, 135, 136],
+    540: [133, 137],
+    541: [133, 134, 137]
+     */
 
     // 创建一个新的见证
     let mut witness = PartitionWitness::new(
@@ -88,21 +96,15 @@ pub fn generate_partial_witness<
     // 持续运行生成器，直到无法取得进展
     while !pending_generator_indices.is_empty() {
         let mut next_pending_generator_indices = Vec::new();
+        //println!("next_pending_generator_indices:{:?}", pending_generator_indices);
 
         for &generator_idx in &pending_generator_indices {
             if generator_is_expired[generator_idx] {
                 continue;
             }
-
-            // 运行生成器
-            println!("generator_idx:{:?},{:?}", generator_idx,generators[generator_idx].0);
             let generator = &generators[generator_idx].0;
             let finished = generator.run(&witness, &mut buffer);
-            //let finished = generators[generator_idx].0.run(&witness, &mut buffer);
-            // if generator_idx >= 129 {
-            //     println!("out buffer:{:?}", buffer);
-            // }
-            //println!("out buffer:{:?}", buffer);
+
             if finished {
                 generator_is_expired[generator_idx] = true;
                 remaining_generators -= 1;
@@ -116,11 +118,12 @@ pub fn generate_partial_witness<
             }
 
             // 将监视新填充目标的未完成生成器加入队列
-            println!("new_target_reps:{:?}", new_target_reps);
+            //println!("new_target_reps:{:?}", new_target_reps);
             for watch in new_target_reps {
                 // 3: [134, 135],
                 // 7: [135, 136],
-                // 11: [136], 15: [137],
+                // 11: [136],
+                // 15: [137],
                 // 405: [137],
                 // 406: [133, 134, 135, 136],
                 // 540: [133, 137],
@@ -138,6 +141,7 @@ pub fn generate_partial_witness<
 
         pending_generator_indices = next_pending_generator_indices;
     }
+    //println!("next_pending_generator_indices:{:?}", pending_generator_indices);
 
     // 检查是否所有生成器都已运行
     if remaining_generators != 0 {
@@ -300,7 +304,7 @@ for SimpleGeneratorAdapter<F, SG, D>
 
     fn run(&self, witness: &PartitionWitness<F>, out_buffer: &mut GeneratedValues<F>) -> bool {
         // 检查见证是否包含所有依赖项
-        println!("inner:{:?}", self.inner);
+        //println!("inner:{:?}", self.inner);
         let depen=self.inner.dependencies();
         //if witness.contains_all(&self.inner.dependencies()) {
         if witness.contains_all(&depen) {

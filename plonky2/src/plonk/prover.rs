@@ -126,6 +126,7 @@ where
         &format!("run {} generators", prover_data.generators.len()),
         generate_partial_witness(inputs, prover_data, common_data)?
     );
+    //println!("partition_witness:{:?}", partition_witness);
 
     prove_with_partition_witness(prover_data, common_data, partition_witness, timing)
 }
