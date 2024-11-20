@@ -53,8 +53,8 @@ for PolynomialBatch<F, C, D>
 impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>
 PolynomialBatch<F, C, D>
 {
+    /// 从多项式值表示创建一个多项式系数表示，先从点值表示转到系数表述，先进行低度扩展，在转到陪集上，然后进行FFT变换，在建立merkle树承诺
     /// Creates a list polynomial commitment for the polynomials interpolating the values in `values`.
-    /// 从多项式值表示创建一个多项式系数表示
     pub fn from_values(
         values: Vec<PolynomialValues<F>>,//包含多项式值的向量，已经被陪集掩码过
         rate_bits: usize,
@@ -63,14 +63,16 @@ PolynomialBatch<F, C, D>
         timing: &mut TimingTree,
         fft_root_table: Option<&FftRootTable<F>>,
     ) -> Self {
-        // 使用 IFFT（逆快速傅里叶变换）将多项式值转换为多项式系数，下面是原始代码：
-        //     let coeffs = timed!(
-        //     timing,
-        //     "IFFT",
-        //     values.into_par_iter().map(|v| v.ifft()).collect::<Vec<_>>()
-        // );
-        // 使用 IFFT（逆快速傅里叶变换）将多项式值转换为多项式系数，下面改成单线程，方便调试的代码
-        println!("in values:{:?}",values);
+        //使用 IFFT（逆快速傅里叶变换）将多项式点值表示转话为系数表示
+        //PolynomialValues { values: [0, 0, 12460551030817792791, 0] }->coeffs: [7726823775058094278, 10719920294356490043, 7726823775058094278, 10719920294356490043] }
+        let coeffs = timed!(
+            timing,
+            "IFFT",
+            values.into_par_iter().map(|v| v.ifft()).collect::<Vec<_>>()
+        );
+
+        /*
+        //单线程调试模式
         let mut coeffs = Vec::new();
         for v in values {
             //PolynomialValues { values: [0, 0, 12460551030817792791, 0] }
@@ -79,9 +81,8 @@ PolynomialBatch<F, C, D>
 
             coeffs.push(tmp);
         }
+         */
         let coeffs = timed!(timing, "IFFT", coeffs);
-        //println!("coeffs:{:?}",timing);
-        //结束调试
         // 从多项式系数创建多项式FRI承诺
         Self::from_coeffs(
             coeffs,

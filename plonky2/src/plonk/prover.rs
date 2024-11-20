@@ -174,7 +174,7 @@ where
             .map(|column| PolynomialValues::new(column.clone()))
             .collect()
     );
-    println!("wires_values:{:?}",wires_values);
+    //println!("wires_values:{:?}",wires_values);
     //PolynomialValues { values: [0, 0, 12460551030817792791, 0] }, PolynomialValues { values: [1, 1, 6203763534542844149, 1] }, PolynomialValues { values: [1, 5, 15133388778355119947, 0] },
 
     let wires_commitment = timed!(
