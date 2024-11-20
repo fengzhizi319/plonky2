@@ -374,19 +374,23 @@ where
 }
 
 /// Compute the partial products used in the `Z` polynomials.
+/// 计算用于 `Z` 多项式的部分积。
 fn all_wires_permutation_partial_products<
     F: RichField + Extendable<D>,
     C: GenericConfig<D, F = F>,
     const D: usize,
 >(
-    witness: &MatrixWitness<F>,
-    betas: &[F],
-    gammas: &[F],
-    prover_data: &ProverOnlyCircuitData<F, C, D>,
-    common_data: &CommonCircuitData<F, D>,
+    witness: &MatrixWitness<F>, // 见证矩阵
+    betas: &[F], // β 值数组
+    gammas: &[F], // γ 值数组
+    prover_data: &ProverOnlyCircuitData<F, C, D>, // 仅用于证明者的电路数据
+    common_data: &CommonCircuitData<F, D>, // 通用电路数据
 ) -> Vec<Vec<PolynomialValues<F>>> {
+    // common_data.config.num_challenges=2
+    // 遍历所有挑战次数
     (0..common_data.config.num_challenges)
         .map(|i| {
+            // 计算每个挑战的部分积和 Z 多项式
             wires_permutation_partial_products_and_zs(
                 witness,
                 betas[i],
@@ -395,7 +399,7 @@ fn all_wires_permutation_partial_products<
                 common_data,
             )
         })
-        .collect()
+        .collect() // 收集结果为向量
 }
 
 /// Compute the partial products used in the `Z` polynomial.
@@ -406,54 +410,60 @@ fn wires_permutation_partial_products_and_zs<
     C: GenericConfig<D, F = F>,
     const D: usize,
 >(
-    witness: &MatrixWitness<F>,
-    beta: F,
-    gamma: F,
-    prover_data: &ProverOnlyCircuitData<F, C, D>,
-    common_data: &CommonCircuitData<F, D>,
+    witness: &MatrixWitness<F>, // 见证矩阵
+    beta: F, // β 值
+    gamma: F, // γ 值
+    prover_data: &ProverOnlyCircuitData<F, C, D>, // 仅用于证明者的电路数据
+    common_data: &CommonCircuitData<F, D>, // 通用电路数据
 ) -> Vec<PolynomialValues<F>> {
-    let degree = common_data.quotient_degree_factor;
-    let subgroup = &prover_data.subgroup;
-    let k_is = &common_data.k_is;
-    let num_prods = common_data.num_partial_products;
+    let degree = common_data.quotient_degree_factor; // 商多项式的度数因子
+    let subgroup = &prover_data.subgroup; // 子群
+    let k_is = &common_data.k_is; // k 值数组
+    let num_prods = common_data.num_partial_products; // 部分积的数量
+
+    // 计算所有商多项式的部分积
     let all_quotient_chunk_products = subgroup
         .par_iter()
         .enumerate()
         .map(|(i, &x)| {
-            let s_sigmas = &prover_data.sigmas[i];
+            let s_sigmas = &prover_data.sigmas[i]; // σ 值数组
+            // 计算分子
             let numerators = (0..common_data.config.num_routed_wires).map(|j| {
-                let wire_value = witness.get_wire(i, j);
-                let k_i = k_is[j];
-                let s_id = k_i * x;
-                wire_value + beta * s_id + gamma
+                let wire_value = witness.get_wire(i, j); // 获取线值
+                let k_i = k_is[j]; // 获取 k 值
+                let s_id = k_i * x; // 计算 s_id
+                wire_value + beta * s_id + gamma // 计算分子
             });
+            // 计算分母
             let denominators = (0..common_data.config.num_routed_wires)
                 .map(|j| {
-                    let wire_value = witness.get_wire(i, j);
-                    let s_sigma = s_sigmas[j];
-                    wire_value + beta * s_sigma + gamma
+                    let wire_value = witness.get_wire(i, j); // 获取线值
+                    let s_sigma = s_sigmas[j]; // 获取 σ 值
+                    wire_value + beta * s_sigma + gamma // 计算分母
                 })
                 .collect::<Vec<_>>();
-            let denominator_invs = F::batch_multiplicative_inverse(&denominators);
+            let denominator_invs = F::batch_multiplicative_inverse(&denominators); // 计算分母的逆
+            // 计算商值
             let quotient_values = numerators
                 .zip(denominator_invs)
                 .map(|(num, den_inv)| num * den_inv)
                 .collect::<Vec<_>>();
 
-            quotient_chunk_products(&quotient_values, degree)
+            quotient_chunk_products(&quotient_values, degree) // 计算部分积
         })
         .collect::<Vec<_>>();
 
-    let mut z_x = F::ONE;
-    let mut all_partial_products_and_zs = Vec::with_capacity(all_quotient_chunk_products.len());
+    let mut z_x = F::ONE; // 初始化 Z(x)
+    let mut all_partial_products_and_zs = Vec::with_capacity(all_quotient_chunk_products.len()); // 初始化部分积和 Z 的向量
     for quotient_chunk_products in all_quotient_chunk_products {
         let mut partial_products_and_z_gx =
-            partial_products_and_z_gx(z_x, &quotient_chunk_products);
-        // The last term is Z(gx), but we replace it with Z(x), otherwise Z would end up shifted.
+            partial_products_and_z_gx(z_x, &quotient_chunk_products); // 计算部分积和 Z(gx)
+        // 最后一个项是 Z(gx)，但我们用 Z(x) 替换它，否则 Z 会被移位
         swap(&mut z_x, &mut partial_products_and_z_gx[num_prods]);
-        all_partial_products_and_zs.push(partial_products_and_z_gx);
+        all_partial_products_and_zs.push(partial_products_and_z_gx); // 将部分积和 Z 添加到向量中
     }
 
+    // 转置并收集结果为多项式值的向量
     transpose(&all_partial_products_and_zs)
         .into_par_iter()
         .map(PolynomialValues::new)
@@ -472,60 +482,60 @@ fn compute_lookup_polys<
     C: GenericConfig<D, F = F>,
     const D: usize,
 >(
-    witness: &MatrixWitness<F>,
-    deltas: &[F; 4],
-    prover_data: &ProverOnlyCircuitData<F, C, D>,
-    common_data: &CommonCircuitData<F, D>,
+    witness: &MatrixWitness<F>, // 见证矩阵
+    deltas: &[F; 4], // delta 值数组
+    prover_data: &ProverOnlyCircuitData<F, C, D>, // 仅用于证明者的电路数据
+    common_data: &CommonCircuitData<F, D>, // 通用电路数据
 ) -> Vec<PolynomialValues<F>> {
-    let degree = common_data.degree();
-    let num_lu_slots = LookupGate::num_slots(&common_data.config);
-    let max_lookup_degree = common_data.config.max_quotient_degree_factor - 1;
-    let num_partial_lookups = num_lu_slots.div_ceil(max_lookup_degree);
-    let num_lut_slots = LookupTableGate::num_slots(&common_data.config);
-    let max_lookup_table_degree = num_lut_slots.div_ceil(num_partial_lookups);
+    let degree = common_data.degree(); // 获取电路的度数
+    let num_lu_slots = LookupGate::num_slots(&common_data.config); // 获取查找表槽位数量
+    let max_lookup_degree = common_data.config.max_quotient_degree_factor - 1; // 最大查找表度数
+    let num_partial_lookups = num_lu_slots.div_ceil(max_lookup_degree); // 部分查找表的数量
+    let num_lut_slots = LookupTableGate::num_slots(&common_data.config); // 查找表槽位数量
+    let max_lookup_table_degree = num_lut_slots.div_ceil(num_partial_lookups); // 最大查找表度数
 
-    // First poly is RE, the rest are partial SLDCs.
+    // 第一个多项式是 RE，剩下的是部分 SLDCs。
     let mut final_poly_vecs = Vec::with_capacity(num_partial_lookups + 1);
     for _ in 0..num_partial_lookups + 1 {
-        final_poly_vecs.push(PolynomialValues::<F>::new(vec![F::ZERO; degree]));
+        final_poly_vecs.push(PolynomialValues::<F>::new(vec![F::ZERO; degree])); // 初始化多项式向量
     }
 
     for LookupWire {
-        last_lu_gate: last_lu_row,
-        last_lut_gate: last_lut_row,
-        first_lut_gate: first_lut_row,
+        last_lu_gate: last_lu_row, // 最后一个查找表门的行
+        last_lut_gate: last_lut_row, // 最后一个查找表槽的行
+        first_lut_gate: first_lut_row, // 第一个查找表槽的行
     } in prover_data.lookup_rows.clone()
     {
-        // Set values for partial Sums and RE.
+        // 设置部分和 RE 的值。
         for row in (last_lut_row..(first_lut_row + 1)).rev() {
-            // Get combos for Sum.
+            // 获取 Sum 的组合。
             let looked_combos: Vec<F> = (0..num_lut_slots)
                 .map(|s| {
-                    let looked_inp = witness.get_wire(row, LookupTableGate::wire_ith_looked_inp(s));
-                    let looked_out = witness.get_wire(row, LookupTableGate::wire_ith_looked_out(s));
+                    let looked_inp = witness.get_wire(row, LookupTableGate::wire_ith_looked_inp(s)); // 获取查找表输入
+                    let looked_out = witness.get_wire(row, LookupTableGate::wire_ith_looked_out(s)); // 获取查找表输出
 
-                    looked_inp + deltas[LookupChallenges::ChallengeA as usize] * looked_out
+                    looked_inp + deltas[LookupChallenges::ChallengeA as usize] * looked_out // 计算组合
                 })
                 .collect();
-            // Get (alpha - combo).
+            // 获取 (alpha - 组合)。
             let minus_looked_combos: Vec<F> = (0..num_lut_slots)
                 .map(|s| deltas[LookupChallenges::ChallengeAlpha as usize] - looked_combos[s])
                 .collect();
-            // Get 1/(alpha - combo).
+            // 获取 1/(alpha - 组合)。
             let looked_combo_inverses = F::batch_multiplicative_inverse(&minus_looked_combos);
 
-            // Get lookup combos, used to check the well formation of the LUT.
+            // 获取查找表组合，用于检查查找表的正确性。
             let lookup_combos: Vec<F> = (0..num_lut_slots)
                 .map(|s| {
-                    let looked_inp = witness.get_wire(row, LookupTableGate::wire_ith_looked_inp(s));
-                    let looked_out = witness.get_wire(row, LookupTableGate::wire_ith_looked_out(s));
+                    let looked_inp = witness.get_wire(row, LookupTableGate::wire_ith_looked_inp(s)); // 获取查找表输入
+                    let looked_out = witness.get_wire(row, LookupTableGate::wire_ith_looked_out(s)); // 获取查找表输出
 
-                    looked_inp + deltas[LookupChallenges::ChallengeB as usize] * looked_out
+                    looked_inp + deltas[LookupChallenges::ChallengeB as usize] * looked_out // 计算组合
                 })
                 .collect();
 
-            // Compute next row's first value of RE.
-            // If `row == first_lut_row`, then `final_poly_vecs[0].values[row + 1] == 0`.
+            // 计算下一行的第一个 RE 值。
+            // 如果 `row == first_lut_row`，则 `final_poly_vecs[0].values[row + 1] == 0`。
             let mut new_re = final_poly_vecs[0].values[row + 1];
             for elt in &lookup_combos {
                 new_re = new_re * deltas[LookupChallenges::ChallengeDelta as usize] + *elt
@@ -536,7 +546,7 @@ fn compute_lookup_polys<
                 let prev = if slot != 0 {
                     final_poly_vecs[slot].values[row]
                 } else {
-                    // If `row == first_lut_row`, then `final_poly_vecs[num_partial_lookups].values[row + 1] == 0`.
+                    // 如果 `row == first_lut_row`，则 `final_poly_vecs[num_partial_lookups].values[row + 1] == 0`。
                     final_poly_vecs[num_partial_lookups].values[row + 1]
                 };
                 let sum = (slot * max_lookup_table_degree
@@ -549,27 +559,27 @@ fn compute_lookup_polys<
             }
         }
 
-        // Set values for partial LDCs.
+        // 设置部分 LDC 的值。
         for row in (last_lu_row..last_lut_row).rev() {
-            // Get looking combos.
+            // 获取查找组合。
             let looking_combos: Vec<F> = (0..num_lu_slots)
                 .map(|s| {
-                    let looking_in = witness.get_wire(row, LookupGate::wire_ith_looking_inp(s));
-                    let looking_out = witness.get_wire(row, LookupGate::wire_ith_looking_out(s));
+                    let looking_in = witness.get_wire(row, LookupGate::wire_ith_looking_inp(s)); // 获取查找输入
+                    let looking_out = witness.get_wire(row, LookupGate::wire_ith_looking_out(s)); // 获取查找输出
 
-                    looking_in + deltas[LookupChallenges::ChallengeA as usize] * looking_out
+                    looking_in + deltas[LookupChallenges::ChallengeA as usize] * looking_out // 计算组合
                 })
                 .collect();
-            // Get (alpha - combo).
+            // 获取 (alpha - 组合)。
             let minus_looking_combos: Vec<F> = (0..num_lu_slots)
                 .map(|s| deltas[LookupChallenges::ChallengeAlpha as usize] - looking_combos[s])
                 .collect();
-            // Get 1 / (alpha - combo).
+            // 获取 1 / (alpha - 组合)。
             let looking_combo_inverses = F::batch_multiplicative_inverse(&minus_looking_combos);
 
             for slot in 0..num_partial_lookups {
                 let prev = if slot == 0 {
-                    // Valid at _any_ row, even `first_lu_row`.
+                    // 在任何行都有效，即使是 `first_lu_row`。
                     final_poly_vecs[num_partial_lookups].values[row + 1]
                 } else {
                     final_poly_vecs[slot].values[row]
@@ -681,7 +691,7 @@ fn compute_quotient_polys<
                             cur_deltas,
                             num_lut_slots * lut_row_number,
                         )
-                        .eval(cur_challenge_delta)
+                            .eval(cur_challenge_delta)
                     })
                     .collect()
             })
