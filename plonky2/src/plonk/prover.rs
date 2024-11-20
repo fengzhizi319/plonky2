@@ -416,10 +416,10 @@ fn wires_permutation_partial_products_and_zs<
     prover_data: &ProverOnlyCircuitData<F, C, D>, // 仅用于证明者的电路数据
     common_data: &CommonCircuitData<F, D>, // 通用电路数据
 ) -> Vec<PolynomialValues<F>> {
-    let degree = common_data.quotient_degree_factor; // 商多项式的度数因子
+    let degree = common_data.quotient_degree_factor; // 商多项式的度数因子=8
     let subgroup = &prover_data.subgroup; // 子群
     let k_is = &common_data.k_is; // k 值数组
-    let num_prods = common_data.num_partial_products; // 部分积的数量
+    let num_prods = common_data.num_partial_products; // 部分积的数量=9
 
     // 计算所有商多项式的部分积
     let all_quotient_chunk_products = subgroup
