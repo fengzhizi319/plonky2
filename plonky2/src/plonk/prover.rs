@@ -147,14 +147,15 @@ where
 {
     let has_lookup = !common_data.luts.is_empty();
     let config = &common_data.config;
-    let num_challenges = config.num_challenges;
-    let quotient_degree = common_data.quotient_degree();
-    let degree = common_data.degree();
+    let num_challenges = config.num_challenges;//2
+    let quotient_degree = common_data.quotient_degree();//32
+    let degree = common_data.degree();//4
 
     set_lookup_wires(prover_data, common_data, &mut partition_witness)?;
-
+    println!("prover_data.public_inputs:{:?}", prover_data.public_inputs);
     let public_inputs = partition_witness.get_targets(&prover_data.public_inputs);
     let public_inputs_hash = C::InnerHasher::hash_no_pad(&public_inputs);
+    println!("public_inputs_hash:{:?}", public_inputs_hash);
 
     let witness = timed!(
         timing,
