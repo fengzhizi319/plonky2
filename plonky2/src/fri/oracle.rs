@@ -70,11 +70,13 @@ PolynomialBatch<F, C, D>
         //     values.into_par_iter().map(|v| v.ifft()).collect::<Vec<_>>()
         // );
         // 使用 IFFT（逆快速傅里叶变换）将多项式值转换为多项式系数，下面改成单线程，方便调试的代码
+        println!("in values:{:?}",values);
         let mut coeffs = Vec::new();
         for v in values {
-            //println!("v:{:?}",v);
+            //PolynomialValues { values: [0, 0, 12460551030817792791, 0] }
             let tmp=v.ifft();
-            //println!("tmp:{:?}",tmp);
+            //PolynomialCoeffs { coeffs: [7726823775058094278, 10719920294356490043, 7726823775058094278, 10719920294356490043] }
+
             coeffs.push(tmp);
         }
         let coeffs = timed!(timing, "IFFT", coeffs);

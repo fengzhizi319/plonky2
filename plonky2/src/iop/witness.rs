@@ -403,6 +403,7 @@ impl<'a, F: Field> PartitionWitness<'a, F> {
         target.index(self.num_wires, self.degree)
     }
 
+    ///获取整个wire的所有的值，135*4
     pub fn full_witness(self) -> MatrixWitness<F> {
         let mut wire_values = vec![vec![F::ZERO; self.degree]; self.num_wires];
         for i in 0..self.degree {

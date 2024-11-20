@@ -152,16 +152,18 @@ where
     let degree = common_data.degree();//4
 
     set_lookup_wires(prover_data, common_data, &mut partition_witness)?;
-    println!("prover_data.public_inputs:{:?}", prover_data.public_inputs);
+    //prover_data.public_inputs:[VirtualTarget { index: 0 }, VirtualTarget { index: 1 }, Wire(Wire { row: 0, column: 15 })]
     let public_inputs = partition_witness.get_targets(&prover_data.public_inputs);
+    //public_inputs:[0, 1, 5]
     let public_inputs_hash = C::InnerHasher::hash_no_pad(&public_inputs);
-    println!("public_inputs_hash:{:?}", public_inputs_hash);
-
+    //HashOut { elements: [12460551030817792791, 6203763534542844149, 15133388778355119947, 8532039303907884673]
+    //获取135*4个wire的所有的实际数据，每一列4个数据组成一个wire_values的数据
     let witness = timed!(
         timing,
         "compute full witness",
         partition_witness.full_witness()
     );
+    //[0, 0, 12460551030817792791, 0], [1, 1, 6203763534542844149, 1], [1, 5, 15133388778355119947, 0]
 
     let wires_values: Vec<PolynomialValues<F>> = timed!(
         timing,
@@ -172,6 +174,8 @@ where
             .map(|column| PolynomialValues::new(column.clone()))
             .collect()
     );
+    println!("wires_values:{:?}",wires_values);
+    //PolynomialValues { values: [0, 0, 12460551030817792791, 0] }, PolynomialValues { values: [1, 1, 6203763534542844149, 1] }, PolynomialValues { values: [1, 5, 15133388778355119947, 0] },
 
     let wires_commitment = timed!(
         timing,
