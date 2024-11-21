@@ -368,6 +368,7 @@ pub struct ProverOnlyCircuitData<
     /// Commitments to the constants polynomials and sigma polynomials.
     pub constants_sigmas_commitment: PolynomialBatch<F, C, D>,
     /// The transpose of the list of sigma polynomials.
+    /// 把wire[row,column]相同拷贝约束的邻居关系，使用陪集跟子集进行掩码，生成多项式，row选取子集，column选取陪集
     pub sigmas: Vec<Vec<F>>,
     /// Subgroup of order `degree`.
     pub subgroup: Vec<F>,

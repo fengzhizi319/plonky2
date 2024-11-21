@@ -10,16 +10,20 @@ use crate::hash::hash_types::RichField;
 use crate::iop::ext_target::ExtensionTarget;
 use crate::plonk::circuit_builder::CircuitBuilder;
 
+///将 quotient_values 切片按指定大小分块，并计算每个块中所有元素的乘积
 pub(crate) fn quotient_chunk_products<F: Field>(
     quotient_values: &[F],
     max_degree: usize,
 ) -> Vec<F> {
     debug_assert!(max_degree > 1);
     assert!(!quotient_values.is_empty());
-    let chunk_size = max_degree;
+    let chunk_size = max_degree;//8
     quotient_values
+        // 将 `quotient_values` 切片按 `chunk_size` 大小分块
         .chunks(chunk_size)
+        // 对每个块应用闭包，计算块中所有元素的乘积
         .map(|chunk| chunk.iter().copied().product())
+        // 将结果收集到一个向量中
         .collect()
 }
 

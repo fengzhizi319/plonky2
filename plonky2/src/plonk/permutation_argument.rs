@@ -14,7 +14,6 @@ use crate::iop::wire::Wire;
 pub struct Forest {
     /// A map of parent pointers, stored as indices.
     pub(crate) parents: Vec<usize>,
-
     num_wires: usize,
     num_routed_wires: usize,
     degree: usize,
@@ -167,6 +166,9 @@ impl WirePartition {
         //     })
         //     .collect()
     }
+
+
+    ///把wire[row,column]相同拷贝约束的邻居关系，使用陪集跟子集进行掩码，生成多项式，row选取子集，column选取陪集
     pub(crate) fn get_sigma_polys<F: Field>(
         &self,
         degree_log: usize,
@@ -174,23 +176,14 @@ impl WirePartition {
         subgroup: &[F],
     ) -> Vec<PolynomialValues<F>> {
         let degree = 1 << degree_log;
+        //sigma存储每个 wire 相同拷贝约束的“邻居”，如sigma[0]保存wire[0,0]的邻居索引
         let sigma = self.get_sigma_map(degree, k_is.len());
-        //println!("sigma: {:?}", sigma);
-
+        //sigma: [1, 0, 49, 13, 20, 8, 53, 4, 16, 60, 57, 11, 24, 17, 61, 15, 5, 21, 18, 19, 36, 25, 22, 23, 32, 29, 26, 27, 40, 33,...
         let mut result = Vec::new();
         for chunk_start in (0..sigma.len()).step_by(degree) {
             let mut values = Vec::with_capacity(degree);
             for i in 0..degree {
                 let x = sigma[chunk_start + i];
-                let len1=x / degree;//column
-                //let len2=x % degree;
-                // println!("len1:{:?}",len1);
-                // //println!("len2:{:?}",len2);
-                // //print k_is[x / degree]
-                // println!("k_is[x / degree]:{:?}",k_is[x / degree]);
-                // //print subgroup[x % degree]
-                // println!("subgroup[x % degree]:{:?}",subgroup[x % degree]);
-
                 //x / degree:column
                 // x % degree:row
                 //k_is[x / degree]每个列公用一个陪集系数
@@ -209,6 +202,7 @@ impl WirePartition {
         result
     }
 
+    ///存储每个 wire 相同拷贝约束的“邻居”。
     /// Generates sigma in the context of Plonk, which is a map from `[kn]` to `[kn]`, where `k` is
     /// the number of routed wires and `n` is the number of gates.
     fn get_sigma_map(&self, degree: usize, num_routed_wires: usize) -> Vec<usize> {

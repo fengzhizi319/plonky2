@@ -402,6 +402,7 @@ fn all_wires_permutation_partial_products<
         .collect() // 收集结果为向量
 }
 
+/// Multiset 等价证明，计算Z(g^i) = f / g。
 /// Compute the partial products used in the `Z` polynomial.
 /// Returns the polynomials interpolating `partial_products(f / g)`
 /// where `f, g` are the products in the definition of `Z`: `Z(g^i) = f / g`.
@@ -417,24 +418,28 @@ fn wires_permutation_partial_products_and_zs<
     common_data: &CommonCircuitData<F, D>, // 通用电路数据
 ) -> Vec<PolynomialValues<F>> {
     let degree = common_data.quotient_degree_factor; // 商多项式的度数因子=8
-    let subgroup = &prover_data.subgroup; // 子群
-    let k_is = &common_data.k_is; // k 值数组
+    let subgroup = &prover_data.subgroup; // 子群，degree=4
+    let k_is = &common_data.k_is; // 陪集，size=80
     let num_prods = common_data.num_partial_products; // 部分积的数量=9
 
-    // 计算所有商多项式的部分积
+    // 进行置换证明时，计算两个Multiset a跟b置换等价，需要计算numerators=a+beta*i+gamma，denominators=b+beta*sigma(i)+gamma,这两个集合是根等价集合。
+    //subgroup[1, 281474976710656, 18446744069414584320, 18446462594437873665]
+
+    //println!("sigmas:{:?}",prover_data.sigmas);
     let all_quotient_chunk_products = subgroup
         .par_iter()
         .enumerate()
         .map(|(i, &x)| {
             let s_sigmas = &prover_data.sigmas[i]; // σ 值数组
-            // 计算分子
+            //s_sigmas:[281474976710656, 15817657382918473249, 18196947516708736925, 13907817722130613464, 17417240021601665567, 3300053643433736875, 6203009912824666656, 6744005316595460895
+            // 计算分子f=wire_value + beta * s_id + gamma
             let numerators = (0..common_data.config.num_routed_wires).map(|j| {
                 let wire_value = witness.get_wire(i, j); // 获取线值
-                let k_i = k_is[j]; // 获取 k 值
-                let s_id = k_i * x; // 计算 s_id
+                let k_i = k_is[j]; // 获取 第j个陪集的值
+                let s_id = k_i * x; // x为子群的值
                 wire_value + beta * s_id + gamma // 计算分子
             });
-            // 计算分母
+            // 计算分母g=wire_value + beta * s_sigma + gamma
             let denominators = (0..common_data.config.num_routed_wires)
                 .map(|j| {
                     let wire_value = witness.get_wire(i, j); // 获取线值
@@ -443,7 +448,7 @@ fn wires_permutation_partial_products_and_zs<
                 })
                 .collect::<Vec<_>>();
             let denominator_invs = F::batch_multiplicative_inverse(&denominators); // 计算分母的逆
-            // 计算商值
+            // 计算商值(f1f2f3...f79)/(g1g2g3...g79)
             let quotient_values = numerators
                 .zip(denominator_invs)
                 .map(|(num, den_inv)| num * den_inv)
