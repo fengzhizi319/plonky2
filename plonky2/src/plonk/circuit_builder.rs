@@ -1115,7 +1115,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
          */
     }
-
+    ///把wire[row,column]相同拷贝约束的邻居关系，使用陪集跟子集进行掩码，生成多项式，row选取子集，column选取陪集
     fn sigma_vecs(&self, k_is: &[F], subgroup: &[F]) -> (Vec<PolynomialValues<F>>, Forest) {
         // 获取门实例的数量，即电路的度数
         //print inputs
@@ -1459,11 +1459,14 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         //只需要self.config.num_routed_wires个陪集即可。self.config.num_routed_wires=80
         //println!("degree_bits: {}, self.config.num_routed_wires: {}", degree_bits, self.config.num_routed_wires);
         let k_is = get_unique_coset_shifts(degree, self.config.num_routed_wires);
+        // sigma_vecs：把wire[row,column]相同拷贝约束的邻居关系，使用陪集跟子集进行掩码，生成多项式，row选取子集，column选取陪集
+        // forest：包含每个wire的parent
         let (sigma_vecs, forest) = timed!(
             timing,
             "generate sigma polynomials",
             self.sigma_vecs(&k_is, &subgroup)
         );
+        //println!("sigma_vecs:{:?}", sigma_vecs);
 
         // Precompute FFT roots.
         //quotient_degree_factor=8，rate_bits=3，degree_bits=2，max_fft_points=32
