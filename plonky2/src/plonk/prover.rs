@@ -244,7 +244,7 @@ where
         .iter_mut()
         .map(|partial_products_and_z| partial_products_and_z.pop().unwrap())
         .collect();
-    //partial_products_and_zs最后一个元素拿到最前面
+    //partial_products_and_zs最后一个vec（4个元素）拿到最前面
     let zs_partial_products = [plonk_z_vecs, partial_products_and_zs.concat()].concat();
     //println!("zs_partial_products:{:?}",zs_partial_products);
 
@@ -429,7 +429,6 @@ fn wires_permutation_partial_products_and_zs<
     // 进行置换证明时，计算两个Multiset a跟b置换等价，需要计算numerators=a+beta*i+gamma，denominators=b+beta*sigma(i)+gamma,这两个集合是根等价集合。
     //subgroup[1, 281474976710656, 18446744069414584320, 18446462594437873665]
 
-    //println!("sigmas:{:?}",prover_data.sigmas);
     let all_quotient_chunk_products = subgroup
         .par_iter()
         .enumerate()
@@ -440,7 +439,7 @@ fn wires_permutation_partial_products_and_zs<
             let numerators = (0..common_data.config.num_routed_wires).map(|j| {
                 let wire_value = witness.get_wire(i, j); // 获取线值
                 let k_i = k_is[j]; // 获取 第j个陪集的值
-                let s_id = k_i * x; // x为子群的值
+                let s_id = k_i * x; // x为子群的值，此处使用子群的值乘以陪集的值，没有使用wire的坐标序号，是用了优化算法。
                 wire_value + beta * s_id + gamma // 计算分子
             });
             // 计算分母g=wire_value + beta * s_sigma + gamma
@@ -452,12 +451,12 @@ fn wires_permutation_partial_products_and_zs<
                 })
                 .collect::<Vec<_>>();
             let denominator_invs = F::batch_multiplicative_inverse(&denominators); // 计算分母的逆
-            // 计算商值(f1f2f3...f79)/(g1g2g3...g79)
+            // 得到f0/g0,f1/g1,f2/g2,f3/g3,...,f79/g79
             let quotient_values = numerators
                 .zip(denominator_invs)
                 .map(|(num, den_inv)| num * den_inv)
                 .collect::<Vec<_>>();
-            //将8个元素乘到一起
+            //将8个元素乘到一起，得到新的得到f0/g0,f1/g1,f2/g2,f3/g3,...,f9/g9，每一个f、g都是8个元素的乘积
             quotient_chunk_products(&quotient_values, degree) // 计算部分积
         })
         .collect::<Vec<_>>();
@@ -465,10 +464,10 @@ fn wires_permutation_partial_products_and_zs<
     let mut z_x = F::ONE; // 初始化 Z(x)
     let mut all_partial_products_and_zs = Vec::with_capacity(all_quotient_chunk_products.len()); // 初始化部分积和 Z 的向量
     for quotient_chunk_products in all_quotient_chunk_products {
-        let mut partial_products_and_z_gx =
-            //计算r1=z0，r2=z0*z1=r1z1，r3=z0*z1*z2=r2*z2,……，rn=z0*z1*…*z(n-1)=r(n-1)*zn,得到r1,r2,…,rn
-            partial_products_and_z_gx(z_x, &quotient_chunk_products); // 计算部分积和 Z(gx)
-        // 正常情况下，partial_products_and_z_gx[num_prods]就应该为1，这个强制设为1，防止出现不为1的情况？？？
+        //计算r1=z0，r2=z0*z1=r1z1，r3=z0*z1*z2=r2*z2,……，rn=z0*z1*…*z(n-1)=r(n-1)*zn,得到r0,r2,…,r9
+        let mut partial_products_and_z_gx =partial_products_and_z_gx(z_x, &quotient_chunk_products);
+
+        //目的是把4段10个元素给串联到一个向量中，交换后，总的乘积不变，只是顺序变了。也可以先把40个向量串联到一个向量中，再调用partial_products_and_z_gx
         swap(&mut z_x, &mut partial_products_and_z_gx[num_prods]);
         all_partial_products_and_zs.push(partial_products_and_z_gx);
     }
@@ -637,7 +636,7 @@ fn compute_all_lookup_polys<
 }
 
 const BATCH_SIZE: usize = 32;
-
+///计算商多项式
 fn compute_quotient_polys<
     'a,
     F: RichField + Extendable<D>,
