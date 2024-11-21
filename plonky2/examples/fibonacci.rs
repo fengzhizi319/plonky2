@@ -22,33 +22,10 @@ fn main() -> Result<()> {
     let mut prev_target = initial_a;
     let mut cur_target = initial_b;
     for _i in 0..4 {
-        // println!("{}", i,);
-        // println!("begin prev_target:{:?}", prev_target);
-        // println!("begin cur_target:{:?}", cur_target);
-
-
         let temp = builder.add(prev_target, cur_target);
-        // if i==21 {
-        //     println!("-----------------------");
-        // }
-        // println!("after prev_target:{:?}", prev_target);
-        // println!("after cur_target:{:?}", cur_target);
-        // println!("after output:{:?}", temp);
-        // println!("gate_instances{:?}", builder.gate_instances);
-        //builder.print_copy_constraints();
-        //println!("current_slots{:?}", builder.current_slots);
-        //println!("constants_to_targets{:?}", builder.constants_to_targets);
-       //builder.print_constants_to_targets();
-
-        //println!("current_slots{:?}", builder.current_slots);
-        // println!("gates{:?}", builder.gates);
-        //println!("base_arithmetic_results{:?}", builder.base_arithmetic_results);
-
         prev_target = cur_target;
         cur_target = temp;
     }
-    // println!("gate_instances{:?}", builder.gate_instances);
-    //println!("copy_constraints{:?}", builder.copy_constraints);
 
     // Public inputs are the two initial values (provided below) and the result (which is generated).
     builder.register_public_input(initial_a);

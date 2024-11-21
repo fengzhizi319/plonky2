@@ -231,18 +231,22 @@ where
         common_data.quotient_degree_factor < common_data.config.num_routed_wires,
         "When the number of routed wires is smaller that the degree, we should change the logic to avoid computing partial products."
     );
+    //置换证明中，Multiset 等价证明，计算r1=z0，r2=z0*z1=r1z1，r3=z0*z1*z2=r2*z2,……，rn=z0*z1*…*z(n-1)=r(n-1)*zn,得到r1,r2,…,rn，2个挑战因子，需要生成两组
     let mut partial_products_and_zs = timed!(
         timing,
         "compute partial products",
         all_wires_permutation_partial_products(&witness, &betas, &gammas, prover_data, common_data)
     );
+    //println!("partial_products_and_z:{:?}",partial_products_and_zs);
 
     // Z is expected at the front of our batch; see `zs_range` and `partial_products_range`.
     let plonk_z_vecs = partial_products_and_zs
         .iter_mut()
         .map(|partial_products_and_z| partial_products_and_z.pop().unwrap())
         .collect();
+    //partial_products_and_zs最后一个元素拿到最前面
     let zs_partial_products = [plonk_z_vecs, partial_products_and_zs.concat()].concat();
+    //println!("zs_partial_products:{:?}",zs_partial_products);
 
     // All lookup polys: RE and partial SLDCs.
     let lookup_polys =
@@ -373,8 +377,7 @@ where
     })
 }
 
-/// Compute the partial products used in the `Z` polynomials.
-/// 计算用于 `Z` 多项式的部分积。
+///Multiset 等价证明，计算r1=z0，r2=z0*z1=r1z1，r3=z0*z1*z2=r2*z2,……，rn=z0*z1*…*z(n-1)=r(n-1)*zn,得到r1,r2,…,rn
 fn all_wires_permutation_partial_products<
     F: RichField + Extendable<D>,
     C: GenericConfig<D, F = F>,
@@ -402,7 +405,8 @@ fn all_wires_permutation_partial_products<
         .collect() // 收集结果为向量
 }
 
-/// Multiset 等价证明，计算Z(g^i) = f / g。
+/// Multiset 等价证明，计算r1=z0，r2=z0*z1=r1z1，r3=z0*z1*z2=r2*z2,……，rn=z0*z1*…*z(n-1)=r(n-1)*zn,得到r1,r2,…,rn
+/// Z(g^i) = f / g。
 /// Compute the partial products used in the `Z` polynomial.
 /// Returns the polynomials interpolating `partial_products(f / g)`
 /// where `f, g` are the products in the definition of `Z`: `Z(g^i) = f / g`.
@@ -453,7 +457,7 @@ fn wires_permutation_partial_products_and_zs<
                 .zip(denominator_invs)
                 .map(|(num, den_inv)| num * den_inv)
                 .collect::<Vec<_>>();
-
+            //将8个元素乘到一起
             quotient_chunk_products(&quotient_values, degree) // 计算部分积
         })
         .collect::<Vec<_>>();
@@ -462,10 +466,11 @@ fn wires_permutation_partial_products_and_zs<
     let mut all_partial_products_and_zs = Vec::with_capacity(all_quotient_chunk_products.len()); // 初始化部分积和 Z 的向量
     for quotient_chunk_products in all_quotient_chunk_products {
         let mut partial_products_and_z_gx =
+            //计算r1=z0，r2=z0*z1=r1z1，r3=z0*z1*z2=r2*z2,……，rn=z0*z1*…*z(n-1)=r(n-1)*zn,得到r1,r2,…,rn
             partial_products_and_z_gx(z_x, &quotient_chunk_products); // 计算部分积和 Z(gx)
-        // 最后一个项是 Z(gx)，但我们用 Z(x) 替换它，否则 Z 会被移位
+        // 正常情况下，partial_products_and_z_gx[num_prods]就应该为1，这个强制设为1，防止出现不为1的情况？？？
         swap(&mut z_x, &mut partial_products_and_z_gx[num_prods]);
-        all_partial_products_and_zs.push(partial_products_and_z_gx); // 将部分积和 Z 添加到向量中
+        all_partial_products_and_zs.push(partial_products_and_z_gx);
     }
 
     // 转置并收集结果为多项式值的向量
@@ -639,45 +644,42 @@ fn compute_quotient_polys<
     C: GenericConfig<D, F = F>,
     const D: usize,
 >(
-    common_data: &CommonCircuitData<F, D>,
-    prover_data: &'a ProverOnlyCircuitData<F, C, D>,
-    public_inputs_hash: &<<C as GenericConfig<D>>::InnerHasher as Hasher<F>>::Hash,
-    wires_commitment: &'a PolynomialBatch<F, C, D>,
-    zs_partial_products_and_lookup_commitment: &'a PolynomialBatch<F, C, D>,
-    betas: &[F],
-    gammas: &[F],
-    deltas: &[F],
-    alphas: &[F],
+    common_data: &CommonCircuitData<F, D>, // 通用电路数据
+    prover_data: &'a ProverOnlyCircuitData<F, C, D>, // 仅用于证明者的电路数据
+    public_inputs_hash: &<<C as GenericConfig<D>>::InnerHasher as Hasher<F>>::Hash, // 公共输入的哈希值
+    wires_commitment: &'a PolynomialBatch<F, C, D>, // 线值承诺
+    zs_partial_products_and_lookup_commitment: &'a PolynomialBatch<F, C, D>, // Z 多项式和部分积的承诺
+    betas: &[F], // β 值数组
+    gammas: &[F], // γ 值数组
+    deltas: &[F], // δ 值数组
+    alphas: &[F], // α 值数组
 ) -> Vec<PolynomialCoeffs<F>> {
-    let num_challenges = common_data.config.num_challenges;
+    let num_challenges = common_data.config.num_challenges; // 挑战次数2
 
-    let has_lookup = common_data.num_lookup_polys != 0;
+    let has_lookup = common_data.num_lookup_polys != 0; // 是否有查找表false
 
-    let quotient_degree_bits = log2_ceil(common_data.quotient_degree_factor);
+    let quotient_degree_bits = log2_ceil(common_data.quotient_degree_factor); // 商多项式的度数位数3
     assert!(
         quotient_degree_bits <= common_data.config.fri_config.rate_bits,
         "Having constraints of degree higher than the rate is not supported yet. \
         If we need this in the future, we can precompute the larger LDE before computing the `PolynomialBatch`s."
     );
 
-    // We reuse the LDE computed in `PolynomialBatch` and extract every `step` points to get
-    // an LDE matching `max_filtered_constraint_degree`.
-    let step = 1 << (common_data.config.fri_config.rate_bits - quotient_degree_bits);
-    // When opening the `Z`s polys at the "next" point in Plonk, need to look at the point `next_step`
-    // steps away since we work on an LDE of degree `max_filtered_constraint_degree`.
-    let next_step = 1 << quotient_degree_bits;
+    // 重用在 `PolynomialBatch` 中计算的 LDE，并提取每 `step` 个点以获得匹配 `max_filtered_constraint_degree` 的 LDE。
+    let step = 1 << (common_data.config.fri_config.rate_bits - quotient_degree_bits);//1
+    // 在 Plonk 中打开 `Z` 多项式时，需要查看 `next_step` 步之外的点，因为我们在 `max_filtered_constraint_degree` 度数的 LDE 上工作。
+    let next_step = 1 << quotient_degree_bits;//8
 
-    let points = F::two_adic_subgroup(common_data.degree_bits() + quotient_degree_bits);
-    let lde_size = points.len();
+    let points = F::two_adic_subgroup(common_data.degree_bits() + quotient_degree_bits); // 2-adic 子群
+    let lde_size = points.len(); // LDE 的大小32
 
-    let z_h_on_coset = ZeroPolyOnCoset::new(common_data.degree_bits(), quotient_degree_bits);
+    let z_h_on_coset = ZeroPolyOnCoset::new(common_data.degree_bits(), quotient_degree_bits); // 在陪集上的零多项式
 
-    // Precompute the lookup table evals on the challenges in delta
-    // These values are used to produce the final RE constraints for each lut,
-    // and are the same each time in check_lookup_constraints_batched.
-    // lut_poly_evals[i][j] gives the eval for the i'th challenge and the j'th lookup table
+    // 预计算查找表在 delta 挑战上的评估值
+    // 这些值用于生成每个查找表的最终 RE 约束，并且在 `check_lookup_constraints_batched` 中每次都相同。
+    // `lut_poly_evals[i][j]` 给出第 `i` 个挑战和第 `j` 个查找表的评估值
     let lut_re_poly_evals: Vec<Vec<F>> = if has_lookup {
-        let num_lut_slots = LookupTableGate::num_slots(&common_data.config);
+        let num_lut_slots = LookupTableGate::num_slots(&common_data.config); // 查找表槽位数量
         (0..num_challenges)
             .map(move |i| {
                 let cur_deltas = &deltas[NUM_COINS_LOOKUP * i..NUM_COINS_LOOKUP * (i + 1)];
@@ -706,83 +708,83 @@ fn compute_quotient_polys<
     };
 
     let lut_re_poly_evals_refs: Vec<&[F]> =
-        lut_re_poly_evals.iter().map(|v| v.as_slice()).collect();
+        lut_re_poly_evals.iter().map(|v| v.as_slice()).collect(); // 查找表评估值的引用
 
-    let points_batches = points.par_chunks(BATCH_SIZE);
-    let num_batches = points.len().div_ceil(BATCH_SIZE);
+    let points_batches = points.par_chunks(BATCH_SIZE); // 将点分批处理
+    let num_batches = points.len().div_ceil(BATCH_SIZE); // 批次数量
 
     let quotient_values: Vec<Vec<F>> = points_batches
         .enumerate()
         .flat_map(|(batch_i, xs_batch)| {
-            // Each batch must be the same size, except the last one, which may be smaller.
+            // 每个批次必须具有相同的大小，除了最后一个批次，它可能较小。
             debug_assert!(
                 xs_batch.len() == BATCH_SIZE
                     || (batch_i == num_batches - 1 && xs_batch.len() <= BATCH_SIZE)
             );
 
             let indices_batch: Vec<usize> =
-                (BATCH_SIZE * batch_i..BATCH_SIZE * batch_i + xs_batch.len()).collect();
+                (BATCH_SIZE * batch_i..BATCH_SIZE * batch_i + xs_batch.len()).collect(); // 批次索引
 
-            let mut shifted_xs_batch = Vec::with_capacity(xs_batch.len());
-            let mut local_zs_batch = Vec::with_capacity(xs_batch.len());
-            let mut next_zs_batch = Vec::with_capacity(xs_batch.len());
+            let mut shifted_xs_batch = Vec::with_capacity(xs_batch.len()); // 偏移后的 x 批次
+            let mut local_zs_batch = Vec::with_capacity(xs_batch.len()); // 本地 Z 批次
+            let mut next_zs_batch = Vec::with_capacity(xs_batch.len()); // 下一个 Z 批次
 
-            let mut local_lookup_batch = Vec::with_capacity(xs_batch.len());
-            let mut next_lookup_batch = Vec::with_capacity(xs_batch.len());
+            let mut local_lookup_batch = Vec::with_capacity(xs_batch.len()); // 本地查找表批次
+            let mut next_lookup_batch = Vec::with_capacity(xs_batch.len()); // 下一个查找表批次
 
-            let mut partial_products_batch = Vec::with_capacity(xs_batch.len());
-            let mut s_sigmas_batch = Vec::with_capacity(xs_batch.len());
+            let mut partial_products_batch = Vec::with_capacity(xs_batch.len()); // 部分积批次
+            let mut s_sigmas_batch = Vec::with_capacity(xs_batch.len()); // σ 值批次
 
-            let mut local_constants_batch_refs = Vec::with_capacity(xs_batch.len());
-            let mut local_wires_batch_refs = Vec::with_capacity(xs_batch.len());
+            let mut local_constants_batch_refs = Vec::with_capacity(xs_batch.len()); // 本地常量批次引用
+            let mut local_wires_batch_refs = Vec::with_capacity(xs_batch.len()); // 本地线值批次引用
 
             for (&i, &x) in indices_batch.iter().zip(xs_batch) {
-                let shifted_x = F::coset_shift() * x;
-                let i_next = (i + next_step) % lde_size;
+                let shifted_x = F::coset_shift() * x; // 计算偏移后的 x
+                let i_next = (i + next_step) % lde_size; // 计算下一个索引
                 let local_constants_sigmas = prover_data
                     .constants_sigmas_commitment
-                    .get_lde_values(i, step);
-                let local_constants = &local_constants_sigmas[common_data.constants_range()];
-                let s_sigmas = &local_constants_sigmas[common_data.sigmas_range()];
-                let local_wires = wires_commitment.get_lde_values(i, step);
+                    .get_lde_values(i, step); // 获取本地常量和 σ 值
+                let local_constants = &local_constants_sigmas[common_data.constants_range()]; // 获取本地常量
+                let s_sigmas = &local_constants_sigmas[common_data.sigmas_range()]; // 获取 σ 值
+                let local_wires = wires_commitment.get_lde_values(i, step); // 获取本地线值
                 let local_zs_partial_and_lookup =
-                    zs_partial_products_and_lookup_commitment.get_lde_values(i, step);
+                    zs_partial_products_and_lookup_commitment.get_lde_values(i, step); // 获取本地 Z 和部分积
                 let next_zs_partial_and_lookup =
-                    zs_partial_products_and_lookup_commitment.get_lde_values(i_next, step);
+                    zs_partial_products_and_lookup_commitment.get_lde_values(i_next, step); // 获取下一个 Z 和部分积
 
-                let local_zs = &local_zs_partial_and_lookup[common_data.zs_range()];
+                let local_zs = &local_zs_partial_and_lookup[common_data.zs_range()]; // 获取本地 Z
 
-                let next_zs = &next_zs_partial_and_lookup[common_data.zs_range()];
+                let next_zs = &next_zs_partial_and_lookup[common_data.zs_range()]; // 获取下一个 Z
 
                 let partial_products =
-                    &local_zs_partial_and_lookup[common_data.partial_products_range()];
+                    &local_zs_partial_and_lookup[common_data.partial_products_range()]; // 获取部分积
 
                 if has_lookup {
-                    let local_lookup_zs = &local_zs_partial_and_lookup[common_data.lookup_range()];
+                    let local_lookup_zs = &local_zs_partial_and_lookup[common_data.lookup_range()]; // 获取本地查找表 Z
 
-                    let next_lookup_zs = &next_zs_partial_and_lookup[common_data.lookup_range()];
+                    let next_lookup_zs = &next_zs_partial_and_lookup[common_data.lookup_range()]; // 获取下一个查找表 Z
                     debug_assert_eq!(local_lookup_zs.len(), common_data.num_all_lookup_polys());
 
-                    local_lookup_batch.push(local_lookup_zs);
-                    next_lookup_batch.push(next_lookup_zs);
+                    local_lookup_batch.push(local_lookup_zs); // 添加到本地查找表批次
+                    next_lookup_batch.push(next_lookup_zs); // 添加到下一个查找表批次
                 }
 
                 debug_assert_eq!(local_wires.len(), common_data.config.num_wires);
                 debug_assert_eq!(local_zs.len(), num_challenges);
 
-                local_constants_batch_refs.push(local_constants);
-                local_wires_batch_refs.push(local_wires);
+                local_constants_batch_refs.push(local_constants); // 添加到本地常量批次引用
+                local_wires_batch_refs.push(local_wires); // 添加到本地线值批次引用
 
-                shifted_xs_batch.push(shifted_x);
-                local_zs_batch.push(local_zs);
-                next_zs_batch.push(next_zs);
-                partial_products_batch.push(partial_products);
-                s_sigmas_batch.push(s_sigmas);
+                shifted_xs_batch.push(shifted_x); // 添加到偏移后的 x 批次
+                local_zs_batch.push(local_zs); // 添加到本地 Z 批次
+                next_zs_batch.push(next_zs); // 添加到下一个 Z 批次
+                partial_products_batch.push(partial_products); // 添加到部分积批次
+                s_sigmas_batch.push(s_sigmas); // 添加到 σ 值批次
             }
 
-            // NB (JN): I'm not sure how (in)efficient the below is. It needs measuring.
+            // NB (JN): 我不确定下面的效率如何。需要测量。
             let mut local_constants_batch =
-                vec![F::ZERO; xs_batch.len() * local_constants_batch_refs[0].len()];
+                vec![F::ZERO; xs_batch.len() * local_constants_batch_refs[0].len()]; // 初始化本地常量批次
             for i in 0..local_constants_batch_refs[0].len() {
                 for (j, constants) in local_constants_batch_refs.iter().enumerate() {
                     local_constants_batch[i * xs_batch.len() + j] = constants[i];
@@ -790,7 +792,7 @@ fn compute_quotient_polys<
             }
 
             let mut local_wires_batch =
-                vec![F::ZERO; xs_batch.len() * local_wires_batch_refs[0].len()];
+                vec![F::ZERO; xs_batch.len() * local_wires_batch_refs[0].len()]; // 初始化本地线值批次
             for i in 0..local_wires_batch_refs[0].len() {
                 for (j, wires) in local_wires_batch_refs.iter().enumerate() {
                     local_wires_batch[i * xs_batch.len() + j] = wires[i];
@@ -802,7 +804,7 @@ fn compute_quotient_polys<
                 &local_constants_batch,
                 &local_wires_batch,
                 public_inputs_hash,
-            );
+            ); // 创建评估变量批次
 
             let mut quotient_values_batch = eval_vanishing_poly_base_batch::<F, D>(
                 common_data,
@@ -821,22 +823,22 @@ fn compute_quotient_polys<
                 alphas,
                 &z_h_on_coset,
                 &lut_re_poly_evals_refs,
-            );
+            ); // 评估消失多项式基批次
 
             for (&i, quotient_values) in indices_batch.iter().zip(quotient_values_batch.iter_mut())
             {
-                let denominator_inv = z_h_on_coset.eval_inverse(i);
+                let denominator_inv = z_h_on_coset.eval_inverse(i); // 计算分母的逆
                 quotient_values
                     .iter_mut()
-                    .for_each(|v| *v *= denominator_inv);
+                    .for_each(|v| *v *= denominator_inv); // 乘以分母的逆
             }
             quotient_values_batch
         })
-        .collect();
+        .collect(); // 收集商值批次
 
     transpose(&quotient_values)
         .into_par_iter()
         .map(PolynomialValues::new)
         .map(|values| values.coset_ifft(F::coset_shift()))
-        .collect()
+        .collect() // 转置并收集结果为多项式值的向量
 }

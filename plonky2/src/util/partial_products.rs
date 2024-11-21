@@ -26,7 +26,7 @@ pub(crate) fn quotient_chunk_products<F: Field>(
         // 将结果收集到一个向量中
         .collect()
 }
-
+///计算r1=q0，r2=q0*q1=r1q1，r3=q0*q1*q2=r2*q2,……，rn=q0*q1*…*q(n-1)=r(n-1)*qn,得到r1,r2,…,rn
 /// Compute partial products of the original vector `v` such that all products consist of `max_degree`
 /// or less elements. This is done until we've computed the product `P` of all elements in the vector.
 pub(crate) fn partial_products_and_z_gx<F: Field>(z_x: F, quotient_chunk_products: &[F]) -> Vec<F> {
