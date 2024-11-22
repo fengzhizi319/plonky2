@@ -18,20 +18,28 @@ pub struct ZeroPolyOnCoset<F: Field> {
 }
 
 impl<F: Field> ZeroPolyOnCoset<F> {
+    ///得到一个子群的coset。每个元素都减去1，还输出每个元素的逆
     pub fn new(n_log: usize, rate_bits: usize) -> Self {
-        let g_pow_n = F::coset_shift().exp_power_of_2(n_log);
-        let evals = F::two_adic_subgroup(rate_bits)
-            .into_iter()
-            .map(|x| g_pow_n * x - F::ONE)
-            .collect::<Vec<_>>();
-        let inverses = F::batch_multiplicative_inverse(&evals);
-        Self {
-            n: F::from_canonical_usize(1 << n_log),
-            rate: 1 << rate_bits,
-            evals,
-            inverses,
-        }
+    // 计算 g 的 n 次幂，其中 g 是 coset_shift，n 是 2 的 n_log 次幂
+    let g_pow_n = F::coset_shift().exp_power_of_2(n_log);//g^2^n_log=g^n=g^4
+
+    // coset陪集-1
+    let evals = F::two_adic_subgroup(rate_bits)//rate_bits=3
+        .into_iter()
+        .map(|x| g_pow_n * x - F::ONE)
+        .collect::<Vec<_>>();
+
+    // 计算 evals 的乘法逆
+    let inverses = F::batch_multiplicative_inverse(&evals);
+
+    // 返回 ZeroPolyOnCoset 结构体实例
+    Self {
+        n: F::from_canonical_usize(1 << n_log), // n 是 2 的 n_log 次幂
+        rate: 1 << rate_bits, // rate 是 2 的 rate_bits 次幂
+        evals, // 预计算的 evals
+        inverses, // evals 的乘法逆
     }
+}
 
     /// Returns `Z_H(g * w^i)`.
     pub fn eval(&self, i: usize) -> F {

@@ -669,10 +669,10 @@ fn compute_quotient_polys<
     // 在 Plonk 中打开 `Z` 多项式时，需要查看 `next_step` 步之外的点，因为我们在 `max_filtered_constraint_degree` 度数的 LDE 上工作。
     let next_step = 1 << quotient_degree_bits;//8
 
-    let points = F::two_adic_subgroup(common_data.degree_bits() + quotient_degree_bits); // 2-adic 子群
+    let points = F::two_adic_subgroup(common_data.degree_bits() + quotient_degree_bits); // 2+3
     let lde_size = points.len(); // LDE 的大小32
 
-    let z_h_on_coset = ZeroPolyOnCoset::new(common_data.degree_bits(), quotient_degree_bits); // 在陪集上的零多项式
+    let z_h_on_coset = ZeroPolyOnCoset::new(common_data.degree_bits(), quotient_degree_bits); // 2，3；在陪集上的零多项式
 
     // 预计算查找表在 delta 挑战上的评估值
     // 这些值用于生成每个查找表的最终 RE 约束，并且在 `check_lookup_constraints_batched` 中每次都相同。

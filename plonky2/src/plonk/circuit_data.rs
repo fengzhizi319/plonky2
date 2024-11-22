@@ -490,7 +490,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CommonCircuitData<F, D> {
     }
 
     pub const fn degree_bits(&self) -> usize {
-        self.fri_params.degree_bits
+        self.fri_params.degree_bits//2
     }
 
     pub const fn degree(&self) -> usize {
