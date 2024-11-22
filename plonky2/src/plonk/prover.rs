@@ -722,36 +722,36 @@ fn compute_quotient_polys<
             );
 
             let indices_batch: Vec<usize> =
-                (BATCH_SIZE * batch_i..BATCH_SIZE * batch_i + xs_batch.len()).collect(); // 批次索引
+                (BATCH_SIZE * batch_i..BATCH_SIZE * batch_i + xs_batch.len()).collect(); // 批次索引，如[0,1,2,3,...,31]
 
             let mut shifted_xs_batch = Vec::with_capacity(xs_batch.len()); // 偏移后的 x 批次
-            let mut local_zs_batch = Vec::with_capacity(xs_batch.len()); // 本地 Z 批次
+            let mut local_zs_batch = Vec::with_capacity(xs_batch.len()); // local Z 批次
             let mut next_zs_batch = Vec::with_capacity(xs_batch.len()); // 下一个 Z 批次
 
-            let mut local_lookup_batch = Vec::with_capacity(xs_batch.len()); // 本地查找表批次
+            let mut local_lookup_batch = Vec::with_capacity(xs_batch.len()); // local查找表批次
             let mut next_lookup_batch = Vec::with_capacity(xs_batch.len()); // 下一个查找表批次
 
             let mut partial_products_batch = Vec::with_capacity(xs_batch.len()); // 部分积批次
             let mut s_sigmas_batch = Vec::with_capacity(xs_batch.len()); // σ 值批次
 
-            let mut local_constants_batch_refs = Vec::with_capacity(xs_batch.len()); // 本地常量批次引用
-            let mut local_wires_batch_refs = Vec::with_capacity(xs_batch.len()); // 本地线值批次引用
+            let mut local_constants_batch_refs = Vec::with_capacity(xs_batch.len()); // local常量批次引用
+            let mut local_wires_batch_refs = Vec::with_capacity(xs_batch.len()); // local线值批次引用
 
             for (&i, &x) in indices_batch.iter().zip(xs_batch) {
-                let shifted_x = F::coset_shift() * x; // 计算偏移后的 x
+                let shifted_x = F::coset_shift() * x; // 计算陪集的元素
                 let i_next = (i + next_step) % lde_size; // 计算下一个索引
                 let local_constants_sigmas = prover_data
                     .constants_sigmas_commitment
-                    .get_lde_values(i, step); // 获取本地常量和 σ 值
-                let local_constants = &local_constants_sigmas[common_data.constants_range()]; // 获取本地常量
+                    .get_lde_values(i, step); // 获取本次常量和 σ 值
+                let local_constants = &local_constants_sigmas[common_data.constants_range()]; // 获取local常量
                 let s_sigmas = &local_constants_sigmas[common_data.sigmas_range()]; // 获取 σ 值
-                let local_wires = wires_commitment.get_lde_values(i, step); // 获取本地线值
+                let local_wires = wires_commitment.get_lde_values(i, step); // 获取local wire值
                 let local_zs_partial_and_lookup =
-                    zs_partial_products_and_lookup_commitment.get_lde_values(i, step); // 获取本地 Z 和部分积
+                    zs_partial_products_and_lookup_commitment.get_lde_values(i, step); // 获取local Z 和部分积
                 let next_zs_partial_and_lookup =
                     zs_partial_products_and_lookup_commitment.get_lde_values(i_next, step); // 获取下一个 Z 和部分积
 
-                let local_zs = &local_zs_partial_and_lookup[common_data.zs_range()]; // 获取本地 Z
+                let local_zs = &local_zs_partial_and_lookup[common_data.zs_range()]; // 获取local Z
 
                 let next_zs = &next_zs_partial_and_lookup[common_data.zs_range()]; // 获取下一个 Z
 
@@ -759,23 +759,23 @@ fn compute_quotient_polys<
                     &local_zs_partial_and_lookup[common_data.partial_products_range()]; // 获取部分积
 
                 if has_lookup {
-                    let local_lookup_zs = &local_zs_partial_and_lookup[common_data.lookup_range()]; // 获取本地查找表 Z
+                    let local_lookup_zs = &local_zs_partial_and_lookup[common_data.lookup_range()]; // 获取local查找表 Z
 
                     let next_lookup_zs = &next_zs_partial_and_lookup[common_data.lookup_range()]; // 获取下一个查找表 Z
                     debug_assert_eq!(local_lookup_zs.len(), common_data.num_all_lookup_polys());
 
-                    local_lookup_batch.push(local_lookup_zs); // 添加到本地查找表批次
+                    local_lookup_batch.push(local_lookup_zs); // 添加到local查找表批次
                     next_lookup_batch.push(next_lookup_zs); // 添加到下一个查找表批次
                 }
 
                 debug_assert_eq!(local_wires.len(), common_data.config.num_wires);
                 debug_assert_eq!(local_zs.len(), num_challenges);
 
-                local_constants_batch_refs.push(local_constants); // 添加到本地常量批次引用
-                local_wires_batch_refs.push(local_wires); // 添加到本地线值批次引用
+                local_constants_batch_refs.push(local_constants); // 添加到local常量批次引用
+                local_wires_batch_refs.push(local_wires); // 添加到local线值批次引用
 
                 shifted_xs_batch.push(shifted_x); // 添加到偏移后的 x 批次
-                local_zs_batch.push(local_zs); // 添加到本地 Z 批次
+                local_zs_batch.push(local_zs); // 添加到local Z 批次
                 next_zs_batch.push(next_zs); // 添加到下一个 Z 批次
                 partial_products_batch.push(partial_products); // 添加到部分积批次
                 s_sigmas_batch.push(s_sigmas); // 添加到 σ 值批次

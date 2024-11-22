@@ -198,13 +198,19 @@ PolynomialBatch<F, C, D>
          */
     }
 
-    /// Fetches LDE values at the `index * step`th point.
-    pub fn get_lde_values(&self, index: usize, step: usize) -> &[F] {
-        let index = index * step;
-        let index = reverse_bits(index, self.degree_log + self.rate_bits);
-        let slice = &self.merkle_tree.leaves[index];
-        &slice[..slice.len() - if self.blinding { SALT_SIZE } else { 0 }]
-    }
+
+/// 获取`index * step`th point在 LDE（低度扩展）值，返回一个切片，包含指定索引和步长的 LDE 值
+/// Fetches LDE values at the `index * step`th point.
+pub fn get_lde_values(&self, index: usize, step: usize) -> &[F] {
+    // 计算实际索引
+    let index = index * step;
+    // 反转索引的位
+    let index = reverse_bits(index, self.degree_log + self.rate_bits);
+    // 获取 Merkle 树中对应索引的叶子节点
+    let slice = &self.merkle_tree.leaves[index];
+    // 返回切片，去掉盲化部分（如果启用盲化）
+    &slice[..slice.len() - if self.blinding { SALT_SIZE } else { 0 }]
+}
 
     /// Like `get_lde_values`, but fetches LDE values from a batch of `P::WIDTH` points, and returns
     /// packed values.
