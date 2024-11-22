@@ -672,6 +672,7 @@ fn compute_quotient_polys<
     let points = F::two_adic_subgroup(common_data.degree_bits() + quotient_degree_bits); // 2+3
     let lde_size = points.len(); // LDE 的大小32
 
+    //得到一个子群的coset。每个元素都减去1，还输出每个元素的逆
     let z_h_on_coset = ZeroPolyOnCoset::new(common_data.degree_bits(), quotient_degree_bits); // 2，3；在陪集上的零多项式
 
     // 预计算查找表在 delta 挑战上的评估值
@@ -783,7 +784,8 @@ fn compute_quotient_polys<
 
             // NB (JN): 我不确定下面的效率如何。需要测量。
             let mut local_constants_batch =
-                vec![F::ZERO; xs_batch.len() * local_constants_batch_refs[0].len()]; // 初始化本地常量批次
+                vec![F::ZERO; xs_batch.len() * local_constants_batch_refs[0].len()]; // 初始化本地常量批次，32*4
+            //先拿出第0个元素，拼成32个，再拿出第1个元素，拼成32个，一共4个元素，拼成32*4个
             for i in 0..local_constants_batch_refs[0].len() {
                 for (j, constants) in local_constants_batch_refs.iter().enumerate() {
                     local_constants_batch[i * xs_batch.len() + j] = constants[i];
