@@ -218,6 +218,8 @@ pub trait Gate<F: RichField + Extendable<D>, const D: usize>: 'static + Send + S
         //计算vars_batch中的const-wire的差值，并返回给res_batch
         let mut res_batch = self.eval_unfiltered_base_batch(vars_batch);
         //println!("res_batch:{:?}",res_batch);
+        //将res_batch按filters.len()的大小分割成多个可变的切片（chunk）。chunks_exact_mut方法确保每个切
+        // 片的大小都正好是filters.len()，如果res_batch的长度不是filters.len()的整数倍，则会忽略最后不足的部分
         for res_chunk in res_batch.chunks_exact_mut(filters.len()) {
             batch_multiply_inplace(res_chunk, &filters);
         }
