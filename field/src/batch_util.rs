@@ -24,7 +24,7 @@ fn pack_slice_with_leftovers_mut<P: PackedField>(
     (slice_packed, slice_leftovers)
 }
 
-/// 对两个字段元素切片进行逐元素就地乘法。
+/// 对两个字段元素切片进行逐元素就地乘法，结果更新到out中。
 /// 实现比简单的 for 循环更快。
 pub fn batch_multiply_inplace<F: Field>(out: &mut [F], a: &[F]) {
     let n = out.len();
@@ -44,7 +44,7 @@ pub fn batch_multiply_inplace<F: Field>(out: &mut [F], a: &[F]) {
         *x_out *= *x_a;
     }
 }
-
+/// 对两个字段元素切片进行逐元素加法，结果更新到out中。
 /// Elementwise inplace addition of two slices of field elements.
 /// Implementation be faster than the trivial for loop.
 pub fn batch_add_inplace<F: Field>(out: &mut [F], a: &[F]) {

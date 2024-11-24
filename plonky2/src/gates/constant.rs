@@ -137,8 +137,10 @@ impl<F: RichField + Extendable<D>, const D: usize> PackedEvaluableBase<F, D> for
         //println!("local_wires: {:?}",vars.local_wires);
         for i in 0..self.num_consts {
             //5633733284883438778，13404483256729242856
+            //println!("const_input: {:?}",self.const_input(i));
             let t1=vars.local_constants[self.const_input(i)];
             //4196063132255388424
+            //println!("wire_output: {:?}",self.wire_output(i));
             let t2=vars.local_wires[self.wire_output(i)];
             let constraint = t1 - t2;
             //let constraint = vars.local_constants[self.const_input(i)] - vars.local_wires[self.wire_output(i)];

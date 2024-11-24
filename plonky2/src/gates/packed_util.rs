@@ -27,7 +27,7 @@ pub trait PackedEvaluableBase<F: RichField + Extendable<D>, const D: usize>: Gat
         for (i, vars_packed) in vars_packed_iter.enumerate() {
             //println!("i:  {:?}vars_packed: {:?}", i,vars_packed);
             //println!("res: {:?}", res);//32
-            //把vars_packed中的const-wire差值写入新建的StridedConstraintConsumer中，也就是res中的第i个跟i+32个。
+            //把vars_packed中的64个const-wire差值写入新建的StridedConstraintConsumer中，也就是res中的第i个跟i+32个。
             self.eval_unfiltered_base_packed(
                 vars_packed,
                 //创建一个StridedConstraintConsumer，长度为res的长度，步幅为vars_batch.len()，每次offset+1，因此可以把res填满。

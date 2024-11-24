@@ -150,7 +150,7 @@ pub(crate) fn eval_vanishing_poly<F: RichField + Extendable<D>, const D: usize>(
         vanishing_all_lookup_terms,
         constraint_terms,
     ]
-    .concat();
+        .concat();
 
     let alphas = &alphas.iter().map(|&a| a.into()).collect::<Vec<_>>();
     plonk_common::reduce_with_powers_multi(&vanishing_terms, alphas)
@@ -196,15 +196,16 @@ pub(crate) fn eval_vanishing_poly_base_batch<F: RichField + Extendable<D>, const
     let num_prods = common_data.num_partial_products;//9
 
     let num_gate_constraints = common_data.num_gate_constraints;//123
-
+    //11.25
     let constraint_terms_batch =
         evaluate_gate_constraints_base_batch::<F, D>(common_data, vars_batch);
     debug_assert!(constraint_terms_batch.len() == n * num_gate_constraints);
 
     let num_challenges = common_data.config.num_challenges;
     let num_routed_wires = common_data.config.num_routed_wires;
-
+    // 初始化分子值的向量，容量为路由线的数量
     let mut numerator_values = Vec::with_capacity(num_routed_wires);
+    // 初始化分母值的向量，容量为路由线的数量
     let mut denominator_values = Vec::with_capacity(num_routed_wires);
 
     // The L_0(x) (Z(x) - 1) vanishing terms.
@@ -411,7 +412,7 @@ pub fn check_lookup_constraints<F: RichField + Extendable<D>, const D: usize>(
             deltas,
             num_lut_slots * lut_row_number,
         )
-        .eval(current_delta);
+            .eval(current_delta);
 
         constraints.push(cur_ends_selector * (z_re - cur_function_eval.into()))
     }
@@ -698,7 +699,18 @@ pub fn evaluate_gate_constraints_base_batch<F: RichField + Extendable<D>, const 
 ) -> Vec<F> {
     let mut constraints_batch = vec![F::ZERO; common_data.num_gate_constraints * vars_batch.len()];
     for (i, gate) in common_data.gates.iter().enumerate() {
+        //common_data.selectors_info.selector_indices=[0,0,0,1]
         let selector_index = common_data.selectors_info.selector_indices[i];
+        //println!("i：{}，num_selectors:{:?}",i,common_data.selectors_info.num_selectors());
+        // i：0，gate:ConstantGate { num_consts: 2 }
+        // i：1，gate:PublicInputGate
+        // i：2，gate:ArithmeticGate { num_ops: 20 }
+        // i：3，gate:PoseidonGate(PhantomData<plonky2_field::goldilocks_field::GoldilocksField>)<WIDTH=12>
+
+        // Evaluate the gate constraints for the i-th gate.
+        //对于common_data.gates.iter，gate_constraints_batch.len分别为64，128，640，3936
+        //common_data.selectors_info.groups:[0..3, 3..4]
+        //common_data.selectors_info.num_selectors():2
         let gate_constraints_batch = gate.0.eval_filtered_base_batch(
             vars_batch,
             i,
@@ -707,6 +719,8 @@ pub fn evaluate_gate_constraints_base_batch<F: RichField + Extendable<D>, const 
             common_data.selectors_info.num_selectors(),
             common_data.num_lookup_selectors,
         );
+        //println!("gate_constraints_batch:\n{:?}",gate_constraints_batch);
+        //println!("gate_constraints_batch:{:?}",gate_constraints_batch);
         debug_assert!(
             gate_constraints_batch.len() <= constraints_batch.len(),
             "num_constraints() gave too low of a number"
@@ -716,6 +730,8 @@ pub fn evaluate_gate_constraints_base_batch<F: RichField + Extendable<D>, const 
             &mut constraints_batch[..gate_constraints_batch.len()],
             &gate_constraints_batch,
         );
+        // println!("constraints_batch len:{:?}",constraints_batch.len());
+        // println!("gate_constraints_batch len:{:?}",gate_constraints_batch.len());
     }
     constraints_batch
 }
@@ -904,7 +920,7 @@ pub(crate) fn eval_vanishing_poly_circuit<F: RichField + Extendable<D>, const D:
         vanishing_all_lookup_terms,
         constraint_terms,
     ]
-    .concat();
+        .concat();
 
     alphas
         .iter()

@@ -304,12 +304,14 @@ impl<F: Field> PolynomialCoeffs<F> {
         zero_factor: Option<usize>,
         root_table: Option<&FftRootTable<F>>,
     ) -> PolynomialValues<F> {
+
         let modified_poly: Self = shift
             .powers()
             .zip(&self.coeffs)
             .map(|(r, &c)| r * c)
             .collect::<Vec<_>>()
             .into();
+        //println!("modified_poly: {:?}", modified_poly);
         modified_poly.fft_with_options(zero_factor, root_table)
     }
 

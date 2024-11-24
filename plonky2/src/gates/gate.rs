@@ -164,7 +164,7 @@ pub trait Gate<F: RichField + Extendable<D>, const D: usize>: 'static + Send + S
             .map(|c| filter * c)
             .collect()
     }
-
+    ///（const-wire）*(1-s)(2-s)(3-s)
     /// The result is an array of length `vars_batch.len() * self.num_constraints()`. Constraint `j`
     /// for point `i` is at index `j * batch_size + i`.
     fn eval_filtered_base_batch(
@@ -194,14 +194,18 @@ pub trait Gate<F: RichField + Extendable<D>, const D: usize>: 'static + Send + S
         //     })
         //     .collect();
         //begin debug
+        //vars_batch.len():32
         let mut filters = Vec::with_capacity(vars_batch.len());
+        //println!("vars_batch.len():{:?}",vars_batch.len());//32
+        //println!("vars_batch.local_constants: {:?}",vars_batch.local_constants);//32
         for vars in vars_batch.iter() {
             // println!("vars.local_constants:{:?},{:?},{:?},{:?}",vars.local_constants[0],vars.local_constants[1],vars.local_constants[2],vars.local_constants[3]);
-            // println!("vars.local_constants[selector_index]:{:?}",vars.local_constants[selector_index]);//550480699699462186
+            //println!("row:{:?},selector_index={:?},vars.local_constants[selector_index]:{:?}",row,selector_index,vars.local_constants[selector_index]);//550480699699462186
             // vars.local_constants:550480699699462186,13964441375994449852,5633733284883438778,13404483256729242856
             // vars.local_constants[selector_index]:550480699699462186
             //if row=0，then (1-s)(2-s)(3-s)，if row=1，then (0-s)(2-s)(3-s)，if row=2，then (0-s)(1-s)(3-s)，if row=3，then (0-s)(1-s)(2-s)
             //if row=1，then (0-s)(2-s)(3-s)
+            //println!("row:{},vars.local_constants[selector_index]:{:?}",row,vars.local_constants[selector_index]);
             let filter = compute_filter(
                 //row:0,selector_index:0,group_range:0..3, :2,num_lookup_selectors:0
                 row,
@@ -214,7 +218,11 @@ pub trait Gate<F: RichField + Extendable<D>, const D: usize>: 'static + Send + S
         }
         //end
         //移除 vars_batch中local_constants中前 num_selectors + num_lookup_selectors）batch_size 个元素。如移除2*32=64个元素
+        //println!("num_selectors:{:?}",num_selectors);
+        //println!("begin vars_batch.local_constants: {:?}",vars_batch.local_constants);//32
+        //取出vars_batch中的local_constants的第（num_selectors + num_lookup_selectors）batch_size 个元素开始的切片
         vars_batch.remove_prefix(num_selectors + num_lookup_selectors);
+        //println!("end vars_batch.local_constants: {:?}",vars_batch.local_constants);//32
         //计算vars_batch中的const-wire的差值，并返回给res_batch
         let mut res_batch = self.eval_unfiltered_base_batch(vars_batch);
         //println!("res_batch:{:?}",res_batch);

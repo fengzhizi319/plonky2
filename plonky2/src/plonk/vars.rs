@@ -78,6 +78,7 @@ impl<'a, F: Field> EvaluationVarsBaseBatch<'a, F> {
         }
     }
 
+    ///取self.local_constants的第num_selectors * self.len()个元素开始的所有元素
     pub fn remove_prefix(&mut self, num_selectors: usize) {
         self.local_constants = &self.local_constants[num_selectors * self.len()..];
     }

@@ -150,40 +150,45 @@ PolynomialBatch<F, C, D>
 
         // 如果启用盲化，则在每个叶子向量中添加4个随机元素作为盐
         let salt_size = if blinding { SALT_SIZE } else { 0 };
-
-        polynomials
-            .par_iter()
-            .map(|p| {
-                // 确保所有多项式的度一致
-                assert_eq!(p.len(), degree, "Polynomial degrees inconsistent");
-                //p.lde(rate_bits)元素个数扩展到以前的2^lde,用0进行填充
-                //coset_fft_with_options先转到陪集上，然后进行FFT变换
-                p.lde(rate_bits)
-                    .coset_fft_with_options(F::coset_shift(), Some(rate_bits), fft_root_table)
-                    .values
-            })
-            .chain(
-                //在这个示例中，a.iter() 和 b.iter() 是两个迭代器，.chain(b.iter()) 将它们连接在一起，形成一个新的迭代器。
-                // collect() 方法将这个新的迭代器收集成一个向量。最终输出的向量包含了 a 和 b 中的所有元素
-                // 如果启用盲化，则生成随机向量并添加到结果中，数据维度保持一致
-                (0..salt_size)
-                    .into_par_iter()
-                    .map(|_| F::rand_vec(degree << rate_bits)),
-            )
-            .collect()
-
-
         /*
+                polynomials
+                    .par_iter()
+                    .map(|p| {
+                        // 确保所有多项式的度一致
+                        assert_eq!(p.len(), degree, "Polynomial degrees inconsistent");
+                        //p.lde(rate_bits)元素个数扩展到以前的2^lde,用0进行填充
+                        //coset_fft_with_options先转到陪集上，然后进行FFT变换
+                        p.lde(rate_bits)
+                            .coset_fft_with_options(F::coset_shift(), Some(rate_bits), fft_root_table)
+                            .values
+                    })
+                    .chain(
+                        //在这个示例中，a.iter() 和 b.iter() 是两个迭代器，.chain(b.iter()) 将它们连接在一起，形成一个新的迭代器。
+                        // collect() 方法将这个新的迭代器收集成一个向量。最终输出的向量包含了 a 和 b 中的所有元素
+                        // 如果启用盲化，则生成随机向量并添加到结果中，数据维度保持一致
+                        (0..salt_size)
+                            .into_par_iter()
+                            .map(|_| F::rand_vec(degree << rate_bits)),
+                    )
+                    .collect()
+
+
+         */
+
+
         let mut lde_values = Vec::new();
         for p in polynomials {
             // Ensure all polynomials have the same degree
             assert_eq!(p.len(), degree, "Polynomial degrees inconsistent");
             // Compute the LDE values and perform the coset FFT transformation
             //p.lde(rate_bits)元素个数扩展到以前的2^lde,用0进行填充
+            //PolynomialCoeffs { coeffs: [9223372035781033985, 13835058052060954625, 18446744068340842498, 13835058052060921857] }
             let p_lde = p.lde(rate_bits);
-            println!("p_lde:{:?}",p_lde);
+            //p_lde:PolynomialCoeffs { coeffs: [9223372035781033985, 13835058052060954625, 18446744068340842498, 13835058052060921857, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
             //先把点值多项式转化为陪集上，然后在陪集上进行FFT变换
             let coset_fft_values = p_lde.coset_fft_with_options(F::coset_shift(), Some(rate_bits), fft_root_table);
+            // println!("coset_fft_values:{:?}",coset_fft_values);
+            // println!("values:{:?}",coset_fft_values.values);
             let lde = coset_fft_values.values;
             lde_values.push(lde);
         }
@@ -195,22 +200,20 @@ PolynomialBatch<F, C, D>
         }
         lde_values
 
-         */
     }
 
-
-/// 获取`index * step`th point在 LDE（低度扩展）值，返回一个切片，包含指定索引和步长的 LDE 值
-/// Fetches LDE values at the `index * step`th point.
-pub fn get_lde_values(&self, index: usize, step: usize) -> &[F] {
-    // 计算实际索引
-    let index = index * step;
-    // 反转索引的位
-    let index = reverse_bits(index, self.degree_log + self.rate_bits);
-    // 获取 Merkle 树中对应索引的叶子节点
-    let slice = &self.merkle_tree.leaves[index];
-    // 返回切片，去掉盲化部分（如果启用盲化）
-    &slice[..slice.len() - if self.blinding { SALT_SIZE } else { 0 }]
-}
+    /// 获取`index * step`th point在 LDE（低度扩展）值，返回一个切片，包含指定索引和步长的 LDE 值
+    /// Fetches LDE values at the `index * step`th point.
+    pub fn get_lde_values(&self, index: usize, step: usize) -> &[F] {
+        // 计算实际索引
+        let index = index * step;
+        // 反转索引的位
+        let index = reverse_bits(index, self.degree_log + self.rate_bits);
+        // 获取 Merkle 树中对应索引的叶子节点
+        let slice = &self.merkle_tree.leaves[index];
+        // 返回切片，去掉盲化部分（如果启用盲化）
+        &slice[..slice.len() - if self.blinding { SALT_SIZE } else { 0 }]
+    }
 
     /// Like `get_lde_values`, but fetches LDE values from a batch of `P::WIDTH` points, and returns
     /// packed values.
