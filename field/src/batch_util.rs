@@ -24,18 +24,19 @@ fn pack_slice_with_leftovers_mut<P: PackedField>(
     (slice_packed, slice_leftovers)
 }
 
-/// Elementwise inplace multiplication of two slices of field elements.
-/// Implementation be faster than the trivial for loop.
+/// 对两个字段元素切片进行逐元素就地乘法。
+/// 实现比简单的 for 循环更快。
 pub fn batch_multiply_inplace<F: Field>(out: &mut [F], a: &[F]) {
     let n = out.len();
+    // 确保两个数组的长度相同
     assert_eq!(n, a.len(), "both arrays must have the same length");
 
-    // Split out slice of vectors, leaving leftovers as scalars
+    // 将 out 切片分割为向量部分和剩余的标量部分
     let (out_packed, out_leftovers) =
         pack_slice_with_leftovers_mut::<<F as Packable>::Packing>(out);
     let (a_packed, a_leftovers) = pack_slice_with_leftovers::<<F as Packable>::Packing>(a);
 
-    // Multiply packed and the leftovers
+    // 乘以打包的部分和剩余的部分
     for (x_out, x_a) in out_packed.iter_mut().zip(a_packed) {
         *x_out *= *x_a;
     }
