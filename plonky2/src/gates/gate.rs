@@ -181,7 +181,7 @@ pub trait Gate<F: RichField + Extendable<D>, const D: usize>: 'static + Send + S
         // local_wires: PackedStridedView { start_ptr: 0x160008000, length: 135, stride: 32, _phantom: PhantomData<&[plonky2_field::goldilocks_field::GoldilocksField]> },
         // public_inputs_hash: HashOut { elements: [12460551030817792791, 6203763534542844149, 15133388778355119947, 8532039303907884673] } }
 
-        println!("row:{},selector_index:{},group_range:{:?},num_selectors:{},num_lookup_selectors:{}",row,selector_index,group_range,num_selectors,num_lookup_selectors);
+        //println!("row:{},selector_index:{},group_range:{:?},num_selectors:{},num_lookup_selectors:{}",row,selector_index,group_range,num_selectors,num_lookup_selectors);
         // let filters: Vec<_> = vars_batch
         //     .iter()
         //     .map(|vars| {
@@ -220,7 +220,9 @@ pub trait Gate<F: RichField + Extendable<D>, const D: usize>: 'static + Send + S
         //println!("res_batch:{:?}",res_batch);
         //将res_batch按filters.len()的大小分割成多个可变的切片（chunk）。chunks_exact_mut方法确保每个切
         // 片的大小都正好是filters.len()，如果res_batch的长度不是filters.len()的整数倍，则会忽略最后不足的部分
+        //filters.len()=32
         for res_chunk in res_batch.chunks_exact_mut(filters.len()) {
+            //res_chunk与filters逐个元素相乘，结果存储在res_chunk中res_chunk[i]=res_chunk[i]*filters[i]
             batch_multiply_inplace(res_chunk, &filters);
         }
         res_batch
