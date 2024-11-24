@@ -70,7 +70,7 @@ impl<F: RichField + Extendable<D>, const D: usize> Gate<F, D> for ConstantGate {
     ) {
         panic!("use eval_unfiltered_base_packed instead");
     }
-
+    ///计算局部常量和局部线的差值，返回一个Vec<F>，其中包含这些差值。
     fn eval_unfiltered_base_batch(&self, vars_base: EvaluationVarsBaseBatch<F>) -> Vec<F> {
         self.eval_unfiltered_base_batch_packed(vars_base)
     }
@@ -118,14 +118,32 @@ impl<F: RichField + Extendable<D>, const D: usize> Gate<F, D> for ConstantGate {
 }
 
 impl<F: RichField + Extendable<D>, const D: usize> PackedEvaluableBase<F, D> for ConstantGate {
+    ///计算局部常量和局部线的差值，并将这些差值传递给 yield_constr 进行存储
     fn eval_unfiltered_base_packed<P: PackedField<Scalar = F>>(
         &self,
         vars: EvaluationVarsBasePacked<P>,
         mut yield_constr: StridedConstraintConsumer<P>,
     ) {
-        yield_constr.many((0..self.num_consts).map(|i| {
-            vars.local_constants[self.const_input(i)] - vars.local_wires[self.wire_output(i)]
-        }));
+        //调用 yield_constr 的 many 方法，传入一个迭代器，该迭代器生成从 0 到 self.num_consts 的值
+        // yield_constr.many((0..self.num_consts).map(|i| {
+        //     vars.local_constants[self.const_input(i)] - vars.local_wires[self.wire_output(i)]
+        // }));
+        // let t1=yield_constr.many((0..self.num_consts));
+        // let t2=t1.map(|i| {
+        //     vars.local_constants[self.const_input(i)] - vars.local_wires[self.wire_output(i)]
+        // });
+        //self.num_consts=2
+        //println!("local_constants: {:?}",vars.local_constants);
+        //println!("local_wires: {:?}",vars.local_wires);
+        for i in 0..self.num_consts {
+            //5633733284883438778，13404483256729242856
+            let t1=vars.local_constants[self.const_input(i)];
+            //4196063132255388424
+            let t2=vars.local_wires[self.wire_output(i)];
+            let constraint = t1 - t2;
+            //let constraint = vars.local_constants[self.const_input(i)] - vars.local_wires[self.wire_output(i)];
+            yield_constr.one(constraint);
+        }
     }
 }
 
@@ -155,4 +173,7 @@ mod tests {
         let gate = ConstantGate { num_consts };
         test_eval_fns::<F, C, _, D>(gate)
     }
+
+
+
 }

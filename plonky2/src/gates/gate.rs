@@ -109,11 +109,22 @@ pub trait Gate<F: RichField + Extendable<D>, const D: usize>: 'static + Send + S
     }
 
     fn eval_unfiltered_base_batch(&self, vars_base: EvaluationVarsBaseBatch<F>) -> Vec<F> {
-        let mut res = vec![F::ZERO; vars_base.len() * self.num_constraints()];
+        //let mut res = vec![F::ZERO; vars_base.len() * self.num_constraints()];
+        // for (i, vars_base_one) in vars_base.iter().enumerate() {
+        //     self.eval_unfiltered_base_one(
+        //         vars_base_one,
+        //         StridedConstraintConsumer::new(&mut res, vars_base.len(), i),
+        //     );
+        // }
+
+        let vars_base_len=vars_base.len();//32
+        let num_constraints_len=self.num_constraints();//123
+        let mut res = vec![F::ZERO; vars_base_len * num_constraints_len];
         for (i, vars_base_one) in vars_base.iter().enumerate() {
+            let consumer=StridedConstraintConsumer::new(&mut res, vars_base_len, i);
             self.eval_unfiltered_base_one(
                 vars_base_one,
-                StridedConstraintConsumer::new(&mut res, vars_base.len(), i),
+                consumer,
             );
         }
         res
@@ -165,19 +176,48 @@ pub trait Gate<F: RichField + Extendable<D>, const D: usize>: 'static + Send + S
         num_selectors: usize,
         num_lookup_selectors: usize,
     ) -> Vec<F> {
-        let filters: Vec<_> = vars_batch
-            .iter()
-            .map(|vars| {
-                compute_filter(
-                    row,
-                    group_range.clone(),
-                    vars.local_constants[selector_index],
-                    num_selectors > 1,
-                )
-            })
-            .collect();
+        //vars:EvaluationVarsBase {
+        // local_constants: PackedStridedView { start_ptr: 0x15d80d200, length: 4, stride: 32, _phantom: PhantomData<&[plonky2_field::goldilocks_field::GoldilocksField]> },
+        // local_wires: PackedStridedView { start_ptr: 0x160008000, length: 135, stride: 32, _phantom: PhantomData<&[plonky2_field::goldilocks_field::GoldilocksField]> },
+        // public_inputs_hash: HashOut { elements: [12460551030817792791, 6203763534542844149, 15133388778355119947, 8532039303907884673] } }
+
+        println!("row:{},selector_index:{},group_range:{:?},num_selectors:{},num_lookup_selectors:{}",row,selector_index,group_range,num_selectors,num_lookup_selectors);
+        // let filters: Vec<_> = vars_batch
+        //     .iter()
+        //     .map(|vars| {
+        //         compute_filter(
+        //             row,
+        //             group_range.clone(),
+        //             vars.local_constants[selector_index],
+        //             num_selectors > 1,
+        //         )
+        //     })
+        //     .collect();
+        //begin debug
+        let mut filters = Vec::with_capacity(vars_batch.len());
+        for vars in vars_batch.iter() {
+            // println!("vars.local_constants:{:?},{:?},{:?},{:?}",vars.local_constants[0],vars.local_constants[1],vars.local_constants[2],vars.local_constants[3]);
+            // println!("vars.local_constants[selector_index]:{:?}",vars.local_constants[selector_index]);//550480699699462186
+            // vars.local_constants:550480699699462186,13964441375994449852,5633733284883438778,13404483256729242856
+            // vars.local_constants[selector_index]:550480699699462186
+            //if row=0，then (1-s)(2-s)(3-s)，if row=1，then (0-s)(2-s)(3-s)，if row=2，then (0-s)(1-s)(3-s)，if row=3，then (0-s)(1-s)(2-s)
+            //if row=1，then (0-s)(2-s)(3-s)
+            let filter = compute_filter(
+                //row:0,selector_index:0,group_range:0..3, :2,num_lookup_selectors:0
+                row,
+                group_range.clone(),
+                vars.local_constants[selector_index],
+                num_selectors > 1,
+            );
+            //println!("filter:{:?}",filter);//filter:10708010571758048252
+            filters.push(filter);
+        }
+        //end
+        //移除 vars_batch中local_constants中前 num_selectors + num_lookup_selectors）batch_size 个元素。如移除2*32=64个元素
         vars_batch.remove_prefix(num_selectors + num_lookup_selectors);
+        //计算vars_batch中的const-wire的差值，并返回给res_batch
         let mut res_batch = self.eval_unfiltered_base_batch(vars_batch);
+        //println!("res_batch:{:?}",res_batch);
         for res_chunk in res_batch.chunks_exact_mut(filters.len()) {
             batch_multiply_inplace(res_chunk, &filters);
         }
@@ -338,14 +378,24 @@ pub struct PrefixedGate<F: RichField + Extendable<D>, const D: usize> {
     pub prefix: Vec<bool>,
 }
 
-/// A gate's filter designed so that it is non-zero if `s = row`.
+/// (0-s)*(1-s)*(2-s)*...*(x-s)*...*(t-1-s)其中x不等于row；因此x等于row时不等于0，其他group_range值为0
 fn compute_filter<K: Field>(row: usize, group_range: Range<usize>, s: K, many_selector: bool) -> K {
+    // 断言 group_range 包含 row
     debug_assert!(group_range.contains(&row));
+    //println!("row:{},group_range:{:?}",row,group_range);
+    //row:0,group_range:0..3，many_selector=true，s=550480699699462186
+    //chain 是 Rust 中迭代器的一种方法，用于将两个迭代器连接在一起，形成一个新的迭代器。
+    // 这个新迭代器会先遍历第一个迭代器的所有元素，然后继续遍历第二个迭代器的所有元素。
+
+    // 过滤掉 group_range 中等于 row 的元素，并根据 many_selector 决定是否添加 UNUSED_SELECTOR
     group_range
         .filter(|&i| i != row)
         .chain(many_selector.then_some(UNUSED_SELECTOR))
+        // 将每个元素转换为 K 类型并减去 s
         .map(|i| K::from_canonical_usize(i) - s)
+        // 计算所有元素的乘积
         .product()
+
 }
 
 fn compute_filter_circuit<F: RichField + Extendable<D>, const D: usize>(

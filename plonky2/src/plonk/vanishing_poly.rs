@@ -192,10 +192,10 @@ pub(crate) fn eval_vanishing_poly_base_batch<F: RichField + Extendable<D>, const
     assert_eq!(partial_products_batch.len(), n);
     assert_eq!(s_sigmas_batch.len(), n);
 
-    let max_degree = common_data.quotient_degree_factor;
-    let num_prods = common_data.num_partial_products;
+    let max_degree = common_data.quotient_degree_factor;//8
+    let num_prods = common_data.num_partial_products;//9
 
-    let num_gate_constraints = common_data.num_gate_constraints;
+    let num_gate_constraints = common_data.num_gate_constraints;//123
 
     let constraint_terms_batch =
         evaluate_gate_constraints_base_batch::<F, D>(common_data, vars_batch);
