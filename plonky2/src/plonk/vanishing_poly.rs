@@ -255,7 +255,7 @@ pub(crate) fn eval_vanishing_poly_base_batch<F: RichField + Extendable<D>, const
         let s_sigmas = s_sigmas_batch[k];
 
         let constraint_terms = PackedStridedView::new(&constraint_terms_batch, n, k);
-        //得到l0(x)
+        //得到l0(x) 1126
         let l_0_x = z_h_on_coset.eval_l_0(index, x);
         for i in 0..num_challenges {
             let z_x = local_zs[i];
