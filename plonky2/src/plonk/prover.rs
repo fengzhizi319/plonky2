@@ -673,6 +673,7 @@ fn compute_quotient_polys<
     let lde_size = points.len(); // LDE 的大小32
 
     //得到一个子群的coset。每个元素都减去1，还输出每个元素的逆
+    //1126 to do
     let z_h_on_coset = ZeroPolyOnCoset::new(common_data.degree_bits(), quotient_degree_bits); // 2，3；在陪集上的零多项式
 
     // 预计算查找表在 delta 挑战上的评估值

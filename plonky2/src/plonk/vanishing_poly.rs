@@ -224,8 +224,12 @@ pub(crate) fn eval_vanishing_poly_base_batch<F: RichField + Extendable<D>, const
     };
 
     let mut res_batch: Vec<Vec<F>> = Vec::with_capacity(n);
+    println!("local_zs_batch: {:?}",local_zs_batch);
+    println!("next_zs_batch: {:?}",next_zs_batch);
     for k in 0..n {
+        //xs_batch=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
         let index = indices_batch[k];
+
         let x = xs_batch[k];
         let vars = vars_batch.view(k);
 

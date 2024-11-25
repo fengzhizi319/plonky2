@@ -94,8 +94,14 @@ impl<'a, F: Field> EvaluationVarsBaseBatch<'a, F> {
     pub fn view(&self, index: usize) -> EvaluationVarsBase<'a, F> {
         // We cannot implement `Index` as `EvaluationVarsBase` is a struct, not a reference.
         assert!(index < self.len());
+        // println!("self.local_constants: \n{:?}", self.local_constants);
+        // println!("self.local_wires: \n{:?}", self.local_wires);
+
         let local_constants = PackedStridedView::new(self.local_constants, self.len(), index);
         let local_wires = PackedStridedView::new(self.local_wires, self.len(), index);
+        //println!("local_constants: \n{:?}", local_constants[0]);//self.local_constants[0]
+        //println!("local_constants: \n{:?}", local_constants[1]);//self.local_constants[self.len()]
+        //println!("local_wires: \n{:?}", local_wires[0]);
         EvaluationVarsBase {
             local_constants,
             local_wires,
