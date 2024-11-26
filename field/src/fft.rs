@@ -80,11 +80,13 @@ fn fft_dispatch<F: Field>(
 }
 
 // #[inline]
+///系数表示转点值表示
 pub fn fft<F: Field>(poly: PolynomialCoeffs<F>) -> PolynomialValues<F> {
     fft_with_options(poly, None, None)
 }
 
 // #[inline]
+///系数表示转点值表示
 pub fn fft_with_options<F: Field>(
     poly: PolynomialCoeffs<F>,
     zero_factor: Option<usize>,
@@ -96,11 +98,12 @@ pub fn fft_with_options<F: Field>(
 }
 
 // #[inline]
+///点值表示转系数表示
 pub fn ifft<F: Field>(poly: PolynomialValues<F>) -> PolynomialCoeffs<F> {
     ifft_with_options(poly, None, None)
 }
 
-/// 使用选项从多项式值进行逆快速傅里叶变换（IFFT）
+/// 点值表示转系数表示（IFFT）
 ///
 /// # 参数
 ///
@@ -110,7 +113,6 @@ pub fn ifft<F: Field>(poly: PolynomialValues<F>) -> PolynomialCoeffs<F> {
 ///
 /// # 返回值
 ///
-/// 返回一个包含多项式系数的结构体
 pub fn ifft_with_options<F: Field>(
     poly: PolynomialValues<F>,
     zero_factor: Option<usize>,
