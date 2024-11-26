@@ -582,6 +582,7 @@ pub struct Powers<F: Field> {
 impl<F: Field> Iterator for Powers<F> {
     type Item = F;
 
+    ///获取当前值，并将当前值乘以base进行更新
     fn next(&mut self) -> Option<F> {
         let result = self.current;
         self.current *= self.base;

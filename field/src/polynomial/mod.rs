@@ -58,13 +58,14 @@ impl<F: Field> PolynomialValues<F> {
         self.values.len()
     }
 
-    //对多项式进行逆快速傅里叶变换，返回系数形式的多项式
+    ///对多项式进行逆快速傅里叶变换，返回系数形式的多项式
     pub fn ifft(self) -> PolynomialCoeffs<F> {
         ifft(self)
     }
 
+
+    /// 对在子集的陪集上的点值表示多项式转化为子集上的多项式系数表示形式
     /// Returns the polynomial whose evaluation on the coset `shift*H` is `self`.
-    /// 对多项式进行逆快速傅里叶变换，并将其扩展到一个又陪集子群上
     pub fn coset_ifft(self, shift: F) -> PolynomialCoeffs<F> {
         let mut shifted_coeffs = self.ifft();
         shifted_coeffs
@@ -77,12 +78,12 @@ impl<F: Field> PolynomialValues<F> {
         shifted_coeffs
     }
 
-    //对多个多项式进行低度扩展
+    ///对多个多项式进行低度扩展
     pub fn lde_multiple(polys: Vec<Self>, rate_bits: usize) -> Vec<Self> {
         polys.into_iter().map(|p| p.lde(rate_bits)).collect()
     }
 
-    //对多项式进行低度扩展
+    ///对多项式进行低度扩展
     pub fn lde(self, rate_bits: usize) -> Self {
         let coeffs = ifft(self).lde(rate_bits);
         fft_with_options(coeffs, Some(rate_bits), None)
@@ -125,7 +126,7 @@ impl<F: Field> From<Vec<F>> for PolynomialValues<F> {
 pub struct PolynomialCoeffs<F: Field> {
     pub coeffs: Vec<F>,
 }
-//PolynomialCoeffs是一个表示多项式系数形式的结构体。系数形式意味着多项式的值是通过其系数来表示的。
+///PolynomialCoeffs是一个表示多项式系数形式的结构体。系数形式意味着多项式的值是通过其系数来表示的。
 impl<F: Field> PolynomialCoeffs<F> {
     pub fn new(coeffs: Vec<F>) -> Self {
         PolynomialCoeffs { coeffs }
@@ -163,12 +164,15 @@ impl<F: Field> PolynomialCoeffs<F> {
             .collect()
     }
 
-    //在点 x 处评估多项式，返回多项式在 x 处的值
+    ///在点 x 处评估多项式，返回多项式在 x 处的值
     pub fn eval(&self, x: F) -> F {
         self.coeffs
-            .iter()
-            .rev()
+            .iter() // 迭代多项式的系数
+            .rev() // 反转迭代顺序，从最高次项开始
             .fold(F::ZERO, |acc, &c| acc * x + c)
+        // 使使用折叠操作来计算多项式的值。F::ZERO 是初始值，
+        // |acc, &c| acc * x + c 是折叠函数。在折叠操作的每一步中，累加器的当前值 (acc) 乘以 x，
+        // 然后将当前系数 (c) 加到这个乘积上。这个过程对每个系数重复，从最高次项到常数项。
     }
 
     /// Evaluate the polynomial at a point given its powers. The first power is the point itself, not 1.
@@ -183,7 +187,7 @@ impl<F: Field> PolynomialCoeffs<F> {
     }
 
 
-    //在基域点 x 处评估多项式
+    ///在基域点 x 处评估多项式
     pub fn eval_base<const D: usize>(&self, x: F::BaseField) -> F
     where
         F: FieldExtension<D>,
@@ -291,26 +295,43 @@ impl<F: Field> PolynomialCoeffs<F> {
         fft_with_options(self, zero_factor, root_table)
     }
 
-    /// Returns the evaluation of the polynomial on the coset `shift*H`.
+    /// 多项式系数表示形式在原始的子群上的点值表示，转化为在子群的陪集上的点值表示
     pub fn coset_fft(&self, shift: F) -> PolynomialValues<F> {
         self.coset_fft_with_options(shift, None, None)
     }
 
-    /// Returns the evaluation of the polynomial on the coset `shift*H`.
-    /// 转化为陪集上的值，然后进行快速傅里叶变换
+
+    /// 多项式系数表示形式在原始的子群上的点值表示，转化为在子群的陪集上的点值表示
+    /// 算法过程：先将多项式的系数跟移位值(s^0,s^1,s^2,...s^(n-1))进行Hadamard乘积（逐位相乘），然后进行快速傅里叶变换
+    ///  Returns the evaluation of the polynomial on the coset `shift*H`.
     pub fn coset_fft_with_options(
         &self,
         shift: F,
         zero_factor: Option<usize>,
         root_table: Option<&FftRootTable<F>>,
     ) -> PolynomialValues<F> {
+        // 创建一个容量为多项式系数长度的向量，用于存储修改后的多项式
+        let mut modified_poly: Vec<F> = Vec::with_capacity(self.coeffs.len());
 
-        let modified_poly: Self = shift
-            .powers()
-            .zip(&self.coeffs)
-            .map(|(r, &c)| r * c)
-            .collect::<Vec<_>>()
-            .into();
+        // 获取移位值的幂迭代器
+        let mut powers_iter = shift.powers();
+
+        // 遍历多项式的每个系数
+        for &c in &self.coeffs {
+            // 获取当前幂值
+            let r = powers_iter.next().unwrap();
+            // 将当前幂值与系数相乘，并将结果添加到修改后的多项式中
+            modified_poly.push(r * c);
+        }
+
+        // 将修改后的多项式向量转换为多项式类型
+        let modified_poly: Self = modified_poly.into();
+        // let modified_poly: Self = shift
+        //     .powers()
+        //     .zip(&self.coeffs)
+        //     .map(|(r, &c)| r * c)
+        //     .collect::<Vec<_>>()
+        //     .into();
         //println!("modified_poly: {:?}", modified_poly);
         modified_poly.fft_with_options(zero_factor, root_table)
     }
@@ -472,7 +493,6 @@ mod tests {
     use super::*;
     use crate::goldilocks_field::GoldilocksField;
     use crate::types::Sample;
-
     #[test]
     fn test_trimmed() {
         type F = GoldilocksField;
@@ -485,14 +505,14 @@ mod tests {
             PolynomialCoeffs::<F> {
                 coeffs: vec![F::ZERO]
             }
-            .trimmed(),
+                .trimmed(),
             PolynomialCoeffs::<F> { coeffs: vec![] }
         );
         assert_eq!(
             PolynomialCoeffs::<F> {
                 coeffs: vec![F::ONE, F::TWO, F::ZERO, F::ZERO]
             }
-            .trimmed(),
+                .trimmed(),
             PolynomialCoeffs::<F> {
                 coeffs: vec![F::ONE, F::TWO]
             }
@@ -503,57 +523,71 @@ mod tests {
     fn test_coset_fft() {
         type F = GoldilocksField;
 
-        let k = 8;
-        let n = 1 << k;
-        let poly = PolynomialCoeffs::new(F::rand_vec(n));
-        let shift = F::rand();
-        let coset_evals = poly.coset_fft(shift).values;
+        let k = 8; // 设置多项式的阶数为 2^8
+        let n = 1 << k; // 计算多项式的长度 n = 2^k
+        let poly = PolynomialCoeffs::new(F::rand_vec(n)); // 生成一个随机的多项式系数
+        let shift = F::rand(); // 生成一个随机的陪集移位
+        let coset_evals = poly.coset_fft(shift).values; // 对多项式进行陪集快速傅里叶变换，得到点值形式的多项式
 
-        let generator = F::primitive_root_of_unity(k);
-        let naive_coset_evals = F::cyclic_subgroup_coset_known_order(generator, shift, n)
+        let generator = F::primitive_root_of_unity(k); // 获取 k 阶单位根
+        let naive_coset_evals = F::cyclic_subgroup_coset_known_order(generator, shift, n) // 计算陪集上的点值
             .into_iter()
-            .map(|x| poly.eval(x))
+            .map(|x| poly.eval(x)) // 评估多项式在这些点上的值
             .collect::<Vec<_>>();
-        assert_eq!(coset_evals, naive_coset_evals);
+        assert_eq!(coset_evals, naive_coset_evals); // 验证评估结果与快速傅里叶变换的结果相同
 
-        let ifft_coeffs = PolynomialValues::new(coset_evals).coset_ifft(shift);
-        assert_eq!(poly, ifft_coeffs);
+        let ifft_coeffs = PolynomialValues::new(coset_evals).coset_ifft(shift); // 对点值形式的多项式进行陪集逆快速傅里叶变换，得到系数形式的多项式
+        assert_eq!(poly, ifft_coeffs); // 验证逆变换后的系数与原始多项式系数相同
     }
 
     #[test]
     fn test_coset_ifft() {
         type F = GoldilocksField;
 
-        let k = 8;
-        let n = 1 << k;
-        let evals = PolynomialValues::new(F::rand_vec(n));
-        let shift = F::rand();
-        let coeffs = evals.clone().coset_ifft(shift);
+        let k = 8; // 设置多项式的阶数为 2^8
+        let n = 1 << k; // 计算多项式的长度 n = 2^k
+        let evals = PolynomialValues::new(F::rand_vec(n)); // 生成一个随机的多项式值
+        let shift = F::rand(); // 生成一个随机的移位值
+        let coeffs = evals.clone().coset_ifft(shift); // 对多项式进行陪集逆快速傅里叶变换，得到系数形式的多项式
 
-        let generator = F::primitive_root_of_unity(k);
-        let naive_coset_evals = F::cyclic_subgroup_coset_known_order(generator, shift, n)
+        let generator = F::primitive_root_of_unity(k); // 获取 k 阶单位根
+        let naive_coset_evals = F::cyclic_subgroup_coset_known_order(generator, shift, n) // 计算陪集上的点值
             .into_iter()
-            .map(|x| coeffs.eval(x))
+            .map(|x| coeffs.eval(x)) // 评估多项式在这些点上的值
             .collect::<Vec<_>>();
-        assert_eq!(evals, naive_coset_evals.into());
+        assert_eq!(evals, naive_coset_evals.into()); // 验证评估结果与原始多项式值相同
 
-        let fft_evals = coeffs.coset_fft(shift);
-        assert_eq!(evals, fft_evals);
+        let fft_evals = coeffs.coset_fft(shift); // 对系数形式的多项式进行陪集快速傅里叶变换，得到点值形式的多项式
+        assert_eq!(evals, fft_evals); // 验证变换后的点值与原始多项式值相同
     }
+    #[test]
+    fn test_lde() {
+        type F = GoldilocksField;
+        let k = 8; // Set the degree of the polynomial to 2^8
+        let n = 1 << k; // Calculate the length of the polynomial n = 2^k
+        let poly = PolynomialValues::new(F::rand_vec(n)); // Generate a random polynomial
+        let rate_bits = 2; // Set the rate bits for low-degree extension
+        let lde_poly = poly.clone().lde(rate_bits); // Perform low-degree extension on the polynomial
 
+        // Verify the length of the extended polynomial
+        assert_eq!(lde_poly.len(), poly.len() << rate_bits);
+
+
+        //assert_eq!(lde_poly.values, naive_lde_evals); // Verify the values match the expected results
+    }
     #[test]
     fn test_polynomial_multiplication() {
         type F = GoldilocksField;
         let mut rng = OsRng;
-        let (a_deg, b_deg) = (rng.gen_range(1..10_000), rng.gen_range(1..10_000));
-        let a = PolynomialCoeffs::new(F::rand_vec(a_deg));
-        let b = PolynomialCoeffs::new(F::rand_vec(b_deg));
-        let m1 = &a * &b;
-        let m2 = &a * &b;
+        let (a_deg, b_deg) = (rng.gen_range(1..10_000), rng.gen_range(1..10_000)); // 随机生成两个多项式的度数
+        let a = PolynomialCoeffs::new(F::rand_vec(a_deg)); // 生成第一个随机多项式
+        let b = PolynomialCoeffs::new(F::rand_vec(b_deg)); // 生成第二个随机多项式
+        let m1 = &a * &b; // 计算两个多项式的乘积
+        let m2 = &a * &b; // 再次计算两个多项式的乘积
         for _ in 0..1000 {
-            let x = F::rand();
-            assert_eq!(m1.eval(x), a.eval(x) * b.eval(x));
-            assert_eq!(m2.eval(x), a.eval(x) * b.eval(x));
+            let x = F::rand(); // 生成一个随机点
+            assert_eq!(m1.eval(x), a.eval(x) * b.eval(x)); // 验证在随机点处的乘积结果
+            assert_eq!(m2.eval(x), a.eval(x) * b.eval(x)); // 再次验证在随机点处的乘积结果
         }
     }
 
@@ -561,19 +595,19 @@ mod tests {
     fn test_inv_mod_xn() {
         type F = GoldilocksField;
         let mut rng = OsRng;
-        let a_deg = rng.gen_range(0..1_000);
-        let n = rng.gen_range(1..1_000);
-        let mut a = PolynomialCoeffs::new(F::rand_vec(a_deg + 1));
+        let a_deg = rng.gen_range(0..1_000); // 随机生成多项式的度数
+        let n = rng.gen_range(1..1_000); // 随机生成模数
+        let mut a = PolynomialCoeffs::new(F::rand_vec(a_deg + 1)); // 生成一个随机多项式
         if a.coeffs[0].is_zero() {
-            a.coeffs[0] = F::ONE; // First coefficient needs to be nonzero.
+            a.coeffs[0] = F::ONE; // 确保多项式的首项系数非零
         }
-        let b = a.inv_mod_xn(n);
-        let mut m = &a * &b;
-        m.coeffs.truncate(n);
-        m.trim();
+        let b = a.inv_mod_xn(n); // 计算多项式在模 x^n 下的逆
+        let mut m = &a * &b; // 计算多项式与其逆的乘积
+        m.coeffs.truncate(n); // 截断多项式到长度 n
+        m.trim(); // 移除多项式的前导零系数
         assert_eq!(
             m,
-            PolynomialCoeffs::new(vec![F::ONE]),
+            PolynomialCoeffs::new(vec![F::ONE]), // 验证乘积结果是否为 1
             "a: {:#?}, b:{:#?}, n:{:#?}, m:{:#?}",
             a,
             b,
@@ -586,13 +620,13 @@ mod tests {
     fn test_polynomial_long_division() {
         type F = GoldilocksField;
         let mut rng = OsRng;
-        let (a_deg, b_deg) = (rng.gen_range(1..10_000), rng.gen_range(1..10_000));
-        let a = PolynomialCoeffs::new(F::rand_vec(a_deg));
-        let b = PolynomialCoeffs::new(F::rand_vec(b_deg));
-        let (q, r) = a.div_rem_long_division(&b);
+        let (a_deg, b_deg) = (rng.gen_range(1..10_000), rng.gen_range(1..10_000)); // 随机生成两个多项式的度数
+        let a = PolynomialCoeffs::new(F::rand_vec(a_deg)); // 生成第一个随机多项式
+        let b = PolynomialCoeffs::new(F::rand_vec(b_deg)); // 生成第二个随机多项式
+        let (q, r) = a.div_rem_long_division(&b); // 进行多项式长除法，得到商和余数
         for _ in 0..1000 {
-            let x = F::rand();
-            assert_eq!(a.eval(x), b.eval(x) * q.eval(x) + r.eval(x));
+            let x = F::rand(); // 生成一个随机点
+            assert_eq!(a.eval(x), b.eval(x) * q.eval(x) + r.eval(x)); // 验证在随机点处的除法结果
         }
     }
 
@@ -600,13 +634,13 @@ mod tests {
     fn test_polynomial_division() {
         type F = GoldilocksField;
         let mut rng = OsRng;
-        let (a_deg, b_deg) = (rng.gen_range(1..10_000), rng.gen_range(1..10_000));
-        let a = PolynomialCoeffs::new(F::rand_vec(a_deg));
-        let b = PolynomialCoeffs::new(F::rand_vec(b_deg));
-        let (q, r) = a.div_rem(&b);
+        let (a_deg, b_deg) = (rng.gen_range(1..10_000), rng.gen_range(1..10_000)); // 随机生成两个多项式的度数
+        let a = PolynomialCoeffs::new(F::rand_vec(a_deg)); // 生成第一个随机多项式
+        let b = PolynomialCoeffs::new(F::rand_vec(b_deg)); // 生成第二个随机多项式
+        let (q, r) = a.div_rem(&b); // 进行多项式除法，得到商和余数
         for _ in 0..1000 {
-            let x = F::rand();
-            assert_eq!(a.eval(x), b.eval(x) * q.eval(x) + r.eval(x));
+            let x = F::rand(); // 生成一个随机点
+            assert_eq!(a.eval(x), b.eval(x) * q.eval(x) + r.eval(x)); // 验证在随机点处的除法结果
         }
     }
 
@@ -614,40 +648,39 @@ mod tests {
     fn test_polynomial_division_by_constant() {
         type F = GoldilocksField;
         let mut rng = OsRng;
-        let a_deg = rng.gen_range(1..10_000);
-        let a = PolynomialCoeffs::new(F::rand_vec(a_deg));
-        let b = PolynomialCoeffs::from(vec![F::rand()]);
-        let (q, r) = a.div_rem(&b);
+        let a_deg = rng.gen_range(1..10_000); // 随机生成多项式的度数
+        let a = PolynomialCoeffs::new(F::rand_vec(a_deg)); // 生成一个随机多项式
+        let b = PolynomialCoeffs::from(vec![F::rand()]); // 生成一个常数多项式
+        let (q, r) = a.div_rem(&b); // 进行多项式除法，得到商和余数
         for _ in 0..1000 {
-            let x = F::rand();
-            assert_eq!(a.eval(x), b.eval(x) * q.eval(x) + r.eval(x));
+            let x = F::rand(); // 生成一个随机点
+            assert_eq!(a.eval(x), b.eval(x) * q.eval(x) + r.eval(x)); // 验证在随机点处的除法结果
         }
     }
 
-    // Test to see which polynomial division method is faster for divisions of the type
-    // `(X^n - 1)/(X - a)
+    // 测试哪种多项式除法方法对于 (X^n - 1)/(X - a) 类型的除法更快
     #[test]
     fn test_division_linear() {
         type F = GoldilocksField;
         let mut rng = OsRng;
-        let l = 14;
-        let n = 1 << l;
-        let g = F::primitive_root_of_unity(l);
+        let l = 14; // 设置多项式的阶数为 2^14
+        let n = 1 << l; // 计算多项式的长度 n = 2^l
+        let g = F::primitive_root_of_unity(l); // 获取 l 阶单位根
         let xn_minus_one = {
-            let mut xn_min_one_vec = vec![F::ZERO; n + 1];
-            xn_min_one_vec[n] = F::ONE;
-            xn_min_one_vec[0] = F::NEG_ONE;
-            PolynomialCoeffs::new(xn_min_one_vec)
+            let mut xn_min_one_vec = vec![F::ZERO; n + 1]; // 初始化一个长度为 n+1 的零向量
+            xn_min_one_vec[n] = F::ONE; // 设置最高次项系数为 1
+            xn_min_one_vec[0] = F::NEG_ONE; // 设置常数项系数为 -1
+            PolynomialCoeffs::new(xn_min_one_vec) // 生成多项式 X^n - 1
         };
 
-        let a = g.exp_u64(rng.gen_range(0..(n as u64)));
-        let denom = PolynomialCoeffs::new(vec![-a, F::ONE]);
+        let a = g.exp_u64(rng.gen_range(0..(n as u64))); // 生成一个随机点 a
+        let denom = PolynomialCoeffs::new(vec![-a, F::ONE]); // 生成多项式 X - a
         let now = Instant::now();
-        xn_minus_one.div_rem(&denom);
-        println!("Division time: {:?}", now.elapsed());
+        xn_minus_one.div_rem(&denom); // 进行多项式除法
+        println!("Division time: {:?}", now.elapsed()); // 输出除法时间
         let now = Instant::now();
-        xn_minus_one.div_rem_long_division(&denom);
-        println!("Division time: {:?}", now.elapsed());
+        xn_minus_one.div_rem_long_division(&denom); // 进行多项式长除法
+        println!("Division time: {:?}", now.elapsed()); // 输出长除法时间
     }
 
     #[test]
