@@ -10,7 +10,7 @@ pub struct ZeroPolyOnCoset<F: Field> {
     n: F,
     /// `rate = |K|/|H|`。
     rate: usize,
-    /// 存储 `g^n * (w^n)^i - 1 = g^n * v^i - 1`，其中 `i` 在 `0..rate` 范围内，`w` 是 `K` 的生成元，`v` 是 `rate` 阶原根。
+    /// 存储 ` g^n * v^i - 1`，其中 `i` 在 `0..rate` 范围内，`w` 是 `K` 的生成元，`v` 是 `rate` 阶原根。
     evals: Vec<F>,
     /// 存储 `evals` 的乘法逆。
     inverses: Vec<F>,
@@ -23,11 +23,17 @@ impl<F: Field> ZeroPolyOnCoset<F> {
         let g_pow_n = F::coset_shift().exp_power_of_2(n_log); // g^2^n_log = g^n = g^4
 
         // 计算 coset 陪集并减去 1
-        let evals = F::two_adic_subgroup(rate_bits) // rate_bits = 3
-            .into_iter()
-            .map(|x| g_pow_n * x - F::ONE)
-            .collect::<Vec<_>>();
-
+        // let evals = F::two_adic_subgroup(rate_bits) // rate_bits = 3
+        //     .into_iter()
+        //     .map(|x| g_pow_n * x - F::ONE)
+        //     .collect::<Vec<_>>();
+        let subgroup = F::two_adic_subgroup(rate_bits); // rate_bits = 3
+        //subgroup[1,18446744069431361537,281474976710656,1099511627520,...,18446742969902956801] ,size=8
+        //println!("subgroup: {:?}", subgroup);
+        let mut evals = Vec::with_capacity(subgroup.len());
+        for x in subgroup {
+            evals.push(g_pow_n * x - F::ONE);
+        }
         // 计算 evals 的乘法逆
         let inverses = F::batch_multiplicative_inverse(&evals);
 
@@ -79,8 +85,8 @@ mod tests {
     fn test_zero_poly_on_coset_new() {
         type F = GoldilocksField;
         // Define the parameters for the test
-        let n_log = 3; // 2^3 = 8
-        let rate_bits = 2; // 8>>2 = 32
+        let n_log = 2; // 2^2 = 4
+        let rate_bits = 3; // 4>>3 = 32
 
         // Create a new ZeroPolyOnCoset instance
         let zero_poly = ZeroPolyOnCoset::<F>::new(n_log, rate_bits);
