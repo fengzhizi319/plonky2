@@ -360,7 +360,7 @@ pub trait Field:
         let n: u128 = ((n_hi as u128) << 64) + (n_lo as u128);
         Self::from_noncanonical_u128(n)
     }
-    //computer x^(2^power_log)
+    ///computer x^(2^power_log)
     fn exp_power_of_2(&self, power_log: usize) -> Self {
         let mut res = *self;
         for _ in 0..power_log {

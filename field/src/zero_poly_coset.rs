@@ -67,3 +67,93 @@ impl<F: Field> ZeroPolyOnCoset<F> {
         self.eval(i) * (self.n * (x - F::ONE)).inverse()
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::goldilocks_field::GoldilocksField;
+    use crate::types::{Field, Sample}; // Adjust the import path as necessary
+
+    #[test]
+    fn test_zero_poly_on_coset_new() {
+        type F = GoldilocksField;
+        // Define the parameters for the test
+        let n_log = 3; // 2^3 = 8
+        let rate_bits = 2; // 8>>2 = 32
+
+        // Create a new ZeroPolyOnCoset instance
+        let zero_poly = ZeroPolyOnCoset::<F>::new(n_log, rate_bits);
+
+        // Verify the values of the fields
+        assert_eq!(zero_poly.n, F::from_canonical_usize(1 << n_log));
+        assert_eq!(zero_poly.rate, 1 << rate_bits);
+
+        // Verify the length of evals and inverses
+        assert_eq!(zero_poly.evals.len(), zero_poly.rate);
+        assert_eq!(zero_poly.inverses.len(), zero_poly.rate);
+
+        // Verify that evals and inverses are correctly computed
+        for i in 0..zero_poly.rate {
+            let eval = zero_poly.eval(i);
+            let inverse = zero_poly.eval_inverse(i);
+            assert_eq!(eval * inverse, F::ONE);
+        }
+    }
+
+    #[test]
+    fn test_eval() {
+        type F = GoldilocksField;
+        let n_log = 2;
+        let rate_bits = 3;
+        let zero_poly = ZeroPolyOnCoset::<F>::new(n_log, rate_bits);
+
+        for i in 0..zero_poly.rate {
+            let eval = zero_poly.eval(i);
+            assert_eq!(eval, zero_poly.evals[i % zero_poly.rate]);
+        }
+    }
+
+    #[test]
+    fn test_eval_inverse() {
+        type F = GoldilocksField;
+        let n_log = 2;
+        let rate_bits = 3;
+        let zero_poly = ZeroPolyOnCoset::<F>::new(n_log, rate_bits);
+
+        for i in 0..zero_poly.rate {
+            let inverse = zero_poly.eval_inverse(i);
+            assert_eq!(inverse, zero_poly.inverses[i % zero_poly.rate]);
+        }
+    }
+
+    #[test]
+    fn test_eval_inverse_packed() {
+        type F = GoldilocksField;
+        type P = GoldilocksField; // Replace with the actual packed field type
+        let n_log = 2;
+        let rate_bits = 3;
+        let zero_poly = ZeroPolyOnCoset::<F>::new(n_log, rate_bits);
+
+        let i_start = 0;
+        let packed = zero_poly.eval_inverse_packed::<P>(i_start);
+        for (j, packed_j) in packed.as_slice().iter().enumerate() {
+            assert_eq!(*packed_j, zero_poly.eval_inverse(i_start + j));
+        }
+    }
+
+    #[test]
+    fn test_eval_l_0() {
+        type F = GoldilocksField;
+        let n_log = 2;
+        let rate_bits = 3;
+        let zero_poly = ZeroPolyOnCoset::<F>::new(n_log, rate_bits);
+
+        for i in 0..zero_poly.rate {
+            let x = F::rand(); // Generate a random point
+            let l_0 = zero_poly.eval_l_0(i, x);
+            let expected = zero_poly.eval(i) * (zero_poly.n * (x - F::ONE)).inverse();
+            assert_eq!(l_0, expected);
+        }
+    }
+}
