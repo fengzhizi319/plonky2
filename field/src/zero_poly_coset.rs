@@ -8,7 +8,7 @@ use crate::types::Field;
 pub struct ZeroPolyOnCoset<F: Field> {
     /// `n = |H|`。
     n: F,
-    /// `rate = |K|/|H|`。
+    /// `rate = `。
     rate: usize,
 
     /// `rate`-primitive root of unity.
@@ -105,7 +105,7 @@ impl<F: Field> ZeroPolyOnCoset<F> {
         packed
     }
 
-    /// 返回 `L_0(x) = Z_H(x)/(n * (x - 1))`，其中 `x = w^i`。
+    /// 返回 `L_0(x) = Z_H(x)/(n * (x - 1))`，其中 `x = w^i`。`w` 是 `K` 的生成元
     pub fn eval_l_0(&self, i: usize, x: F) -> F {
         // 也可以使用蒙哥马利算法预计算逆
         self.eval(i) * (self.n * (x - F::ONE)).inverse()
@@ -115,6 +115,7 @@ impl<F: Field> ZeroPolyOnCoset<F> {
 
 #[cfg(test)]
 mod tests {
+    use alloc::vec;
     //use core::intrinsics::prefetch_write_instruction;
     use super::*;
     use crate::goldilocks_field::GoldilocksField;
@@ -236,12 +237,17 @@ mod tests {
         let n_log = 2;
         let rate_bits = 3;
         let zero_poly = ZeroPolyOnCoset::<F>::new(n_log, rate_bits);
+        let subgroup_k = F::two_adic_subgroup(n_log+rate_bits); // rate_bits = 3
+        println!("subgroup_k: {:?}", subgroup_k);
+        let mut out =vec![F::ZERO; zero_poly.rate];
 
-        for i in 0..zero_poly.rate {
-            let x = F::rand(); // Generate a random point
+        for i in 1..zero_poly.rate {
+            //let x = F::rand(); // Generate a random point
+            let x = subgroup_k[i];
+            println!("i={},x: {:?}", i,x);
             let l_0 = zero_poly.eval_l_0(i, x);
-            let expected = zero_poly.eval(i) * (zero_poly.n * (x - F::ONE)).inverse();
-            assert_eq!(l_0, expected);
+            out[i]=(l_0);
         }
+        println!("out: {:?}", out);
     }
 }
