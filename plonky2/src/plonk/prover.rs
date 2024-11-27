@@ -726,7 +726,7 @@ fn compute_quotient_polys<
             let indices_batch: Vec<usize> =
                 (BATCH_SIZE * batch_i..BATCH_SIZE * batch_i + xs_batch.len()).collect(); // 批次索引，如[0,1,2,3,...,31]
 
-            let mut shifted_xs_batch = Vec::with_capacity(xs_batch.len()); // 偏移后的 x 批次
+            let mut shifted_xs_batch = Vec::with_capacity(xs_batch.len()); // 大子集K的陪集
             let mut local_zs_batch = Vec::with_capacity(xs_batch.len()); // local Z 批次
             let mut next_zs_batch = Vec::with_capacity(xs_batch.len()); // 下一个 Z 批次
 

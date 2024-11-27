@@ -40,49 +40,7 @@ impl<F: Field> ZeroPolyOnCoset<F> {
             inverses, // evals 的乘法逆
         }
     }
-    pub fn new1(n_log: usize, rate_bits: usize) -> Self {
-        // 计算 g 的 n 次幂，其中 g 是 coset_shift，n 是 2 的 n_log 次幂
-        let g_pow_n = F::coset_shift().exp_power_of_2(n_log); // g^2^n_log = g^n = g^4
-        println!("result: {:?}", g_pow_n);//18196947516708736925
 
-        // 计算 coset 陪集并减去 1
-        // let evals = F::two_adic_subgroup(rate_bits) // rate_bits = 3
-        //     .into_iter()
-        //     .map(|x| g_pow_n * x - F::ONE)
-        //     .collect::<Vec<_>>();
-        let subgroup = F::two_adic_subgroup(rate_bits); // rate_bits = 3
-        println!("subgroup: {:?}", subgroup);
-        //rate_bits = 3，subgroup: [1, 16777216, 281474976710656, 1099511627520, 18446744069414584320, 18446744069397807105, 18446462594437873665, 18446742969902956801]
-        //subgroup[1,18446744069431361537,281474976710656,1099511627520,...,18446742969902956801] ,size=8
-        //println!("subgroup: {:?}", subgroup);
-        let mut evals = Vec::with_capacity(subgroup.len());
-        for x in subgroup {
-            evals.push(g_pow_n * x - F::ONE);
-        }
-        println!("evals: {:?}", evals);
-
-        let subgroup1 = F::two_adic_subgroup(n_log+rate_bits); // rate_bits = 3
-
-        let subgroup1_exp_4 = subgroup1.iter().map(|x| x.exp_power_of_2(n_log) ).collect::<Vec<_>>();
-        println!("subgroup1 ^4: {:?}", subgroup1_exp_4);
-        let mut evals1 = Vec::with_capacity(subgroup1.len());
-
-        for x in subgroup1 {
-            evals1.push(g_pow_n * x - F::ONE);
-        }
-        println!("evals1: {:?}", evals1);
-
-        // 计算 evals 的乘法逆
-        let inverses = F::batch_multiplicative_inverse(&evals);
-
-        // 返回 ZeroPolyOnCoset 结构体实例
-        Self {
-            n: F::from_canonical_usize(1 << n_log), // n 是 2 的 n_log 次幂
-            rate: 1 << rate_bits, // rate 是 2 的 rate_bits 次幂
-            evals, // 预计算的 evals
-            inverses, // evals 的乘法逆
-        }
-    }
 
     /// 返回 `Z_H(g * w^i)`。w是K的原根
     pub fn eval(&self, i: usize) -> F {
@@ -240,10 +198,11 @@ mod tests {
         let subgroup_k = F::two_adic_subgroup(n_log+rate_bits); // rate_bits = 3
         println!("subgroup_k: {:?}", subgroup_k);
         let mut out =vec![F::ZERO; zero_poly.rate];
+        let coset_shift = F::coset_shift();
 
-        for i in 1..zero_poly.rate {
+        for i in 0..zero_poly.rate {
             //let x = F::rand(); // Generate a random point
-            let x = subgroup_k[i];
+            let x = coset_shift*subgroup_k[i];
             println!("i={},x: {:?}", i,x);
             let l_0 = zero_poly.eval_l_0(i, x);
             out[i]=(l_0);

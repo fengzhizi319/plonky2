@@ -160,7 +160,7 @@ pub(crate) fn eval_vanishing_poly<F: RichField + Extendable<D>, const D: usize>(
 pub(crate) fn eval_vanishing_poly_base_batch<F: RichField + Extendable<D>, const D: usize>(
     common_data: &CommonCircuitData<F, D>,
     indices_batch: &[usize],
-    xs_batch: &[F],
+    xs_batch: &[F],//大的子集K的陪集
     vars_batch: EvaluationVarsBaseBatch<F>,
     local_zs_batch: &[&[F]],
     next_zs_batch: &[&[F]],
@@ -196,7 +196,7 @@ pub(crate) fn eval_vanishing_poly_base_batch<F: RichField + Extendable<D>, const
     let num_prods = common_data.num_partial_products;//9
 
     let num_gate_constraints = common_data.num_gate_constraints;//123
-    //11.25
+    //
     let constraint_terms_batch =
         evaluate_gate_constraints_base_batch::<F, D>(common_data, vars_batch);
     debug_assert!(constraint_terms_batch.len() == n * num_gate_constraints);
@@ -226,6 +226,7 @@ pub(crate) fn eval_vanishing_poly_base_batch<F: RichField + Extendable<D>, const
     let mut res_batch: Vec<Vec<F>> = Vec::with_capacity(n);
     println!("local_zs_batch: {:?}",local_zs_batch);
     println!("next_zs_batch: {:?}",next_zs_batch);
+    println!("xs_batch: {:?}",xs_batch);
     for k in 0..n {
         //xs_batch=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
         let index = indices_batch[k];
@@ -260,7 +261,16 @@ pub(crate) fn eval_vanishing_poly_base_batch<F: RichField + Extendable<D>, const
         for i in 0..num_challenges {
             let z_x = local_zs[i];
             let z_gx = next_zs[i];
-            vanishing_z_1_terms.push(l_0_x * z_x.sub_one());
+            /*
+                     zx zgx
+                     z0 z1
+                     z1 z2
+                     z2 z3
+                     z3 z4
+                     z4 z5
+
+             */
+            vanishing_z_1_terms.push(l_0_x * z_x.sub_one());//l0(x)*(z(x)-1)
 
             // If there are lookups in the circuit, then we add the lookup constraints.
             if has_lookup {
