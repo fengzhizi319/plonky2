@@ -124,7 +124,7 @@ where
     let partition_witness = timed!(
         timing,
         &format!("run {} generators", prover_data.generators.len()),
-        //根据inputs填充所有的wire为实际值
+        //根据inputs填充所有的wire为实际值，并不全，只是parent值对应的都有。后面有函数full_witness，可以获得完整的一一对应的wire值。
         generate_partial_witness(inputs, prover_data, common_data)?
     );
 
@@ -163,7 +163,7 @@ where
         "compute full witness",
         partition_witness.full_witness()
     );
-    //[0, 0, 12460551030817792791, 0], [1, 1, 6203763534542844149, 1], [1, 5, 15133388778355119947, 0]
+    //witness:MatrixWitness { wire_values: [[0, 0, 12460551030817792791, 0], [1, 1, 6203763534542844149, 1], [1, 5, 15133388778355119947, 0], [0, 0, 8532039303907884673, 0]] ...
 
     let wires_values: Vec<PolynomialValues<F>> = timed!(
         timing,
