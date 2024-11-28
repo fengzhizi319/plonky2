@@ -347,7 +347,7 @@ pub struct PartitionWitness<'a, F: Field> {
     /// 存储每个代表索引的值。如果值为 `None`，表示该索引尚未设置值。
     pub values: Vec<Option<F>>,
 
-    /// 存储每个目标的代表索引的映射。
+    /// 存储每个wire的代表(parent)索引的映射，即要寻找一个wire对应的value，先根据representative_map去找对应的值，再根据这个值去values去找。
     pub representative_map: &'a [usize],
 
     /// 电路中的线数量。

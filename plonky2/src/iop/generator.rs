@@ -21,19 +21,8 @@ use crate::plonk::circuit_data::{CommonCircuitData, ProverOnlyCircuitData};
 use crate::plonk::config::GenericConfig;
 use crate::util::serialization::{Buffer, IoResult, Read, Write};
 
-/// Given a `PartitionWitness` that has only inputs set, populates the rest of the witness using the
-/// given set of generators.
-/// 生成部分见证（witness）
-///
-/// 给定一个仅设置了输入的 `PartitionWitness`，使用给定的生成器集合填充其余的见证。
-///
-/// # 参数
-/// - `inputs`: 包含输入值的部分见证。
-/// - `prover_data`: 包含生成器和其他证明者相关数据的结构体。
-/// - `common_data`: 包含公共电路数据的结构体。
-///
-/// # 返回
-/// 返回一个填充了所有值的 `PartitionWitness`。
+
+/// 根据inputs把所有wire填充为对应的实际值的`PartitionWitness`。
 pub fn generate_partial_witness<
     'a,
     F: RichField + Extendable<D>,

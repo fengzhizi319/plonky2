@@ -459,6 +459,7 @@ pub struct CommonCircuitData<F: RichField + Extendable<D>, const D: usize> {
     pub num_public_inputs: usize,
 
     /// The `{k_i}` valued used in `S_ID_i` in Plonk's permutation argument.
+    /// 子集H陪集移位k，用来表示计算wire中序号，本来为1，2，3...但是为了优化改为了k*H,k就是这里的k_is,用在置换承诺中
     pub k_is: Vec<F>,
 
     /// The number of partial products needed to compute the `Z` polynomials.
@@ -562,6 +563,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CommonCircuitData<F, D> {
             point: zeta_next,
             polynomials: self.fri_next_batch_polys(),
         };
+        //println!("zeta_next_batch: {:?}", zeta_next_batch);
 
         let openings = vec![zeta_batch, zeta_next_batch];
         FriInstanceInfo {

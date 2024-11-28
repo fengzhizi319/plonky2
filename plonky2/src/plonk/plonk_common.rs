@@ -106,11 +106,23 @@ pub(crate) fn reduce_with_powers_multi<
     alphas: &[F],
 ) -> Vec<F> {
     let mut cumul = vec![F::ZERO; alphas.len()];
+    /*
     for &term in terms.into_iter().rev() {
         cumul
             .iter_mut()
             .zip(alphas)
             .for_each(|(c, &alpha)| *c = term.multiply_accumulate(*c, alpha));
+    }
+    cumul
+
+     */
+    let  reversed_terms = terms.into_iter().rev();
+    for &term in reversed_terms {
+        let mut cumul_iter = cumul.iter_mut();
+        let  alphas_iter = alphas.iter();
+        cumul_iter.zip(alphas_iter).for_each(|(c, &alpha)| {
+            *c = term.multiply_accumulate(*c, alpha);
+        });
     }
     cumul
 }

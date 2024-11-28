@@ -124,9 +124,9 @@ where
     let partition_witness = timed!(
         timing,
         &format!("run {} generators", prover_data.generators.len()),
+        //根据inputs填充所有的wire为实际值
         generate_partial_witness(inputs, prover_data, common_data)?
     );
-    //println!("partition_witness:{:?}", partition_witness);
 
     prove_with_partition_witness(prover_data, common_data, partition_witness, timing)
 }
@@ -274,7 +274,7 @@ where
     challenger.observe_cap::<C::Hasher>(&partial_products_zs_and_lookup_commitment.merkle_tree.cap);
 
     let alphas = challenger.get_n_challenges(num_challenges);
-
+    //每个挑战点在商多项式的值，定义域为阶为32的子群的陪集。
     let quotient_polys = timed!(
         timing,
         "compute quotient polys",
@@ -284,13 +284,14 @@ where
             &public_inputs_hash,
             &wires_commitment,
             &partial_products_zs_and_lookup_commitment,
-            &betas,
-            &gammas,
+            &betas,//挑战的随机数
+            &gammas,//挑战的随机数
             &deltas,
             &alphas,
         )
     );
-
+    println!("quotient_polys:{:?}",quotient_polys);
+    //每degree个分成一组。
     let all_quotient_poly_chunks: Vec<PolynomialCoeffs<F>> = timed!(
         timing,
         "split up quotient polys",
@@ -305,6 +306,7 @@ where
             })
             .collect()
     );
+    println!("all_quotient_poly_chunks:{:?}",all_quotient_poly_chunks);
 
     let quotient_polys_commitment = timed!(
         timing,
@@ -318,6 +320,7 @@ where
             prover_data.fft_root_table.as_ref(),
         )
     );
+    //println!("quotient_polys_commitment.polynomials:{:?}",quotient_polys_commitment.polynomials);
 
     challenger.observe_cap::<C::Hasher>(&quotient_polys_commitment.merkle_tree.cap);
 
@@ -384,8 +387,8 @@ fn all_wires_permutation_partial_products<
     const D: usize,
 >(
     witness: &MatrixWitness<F>, // 见证矩阵
-    betas: &[F], // β 值数组
-    gammas: &[F], // γ 值数组
+    betas: &[F], // β 值数组，//挑战的随机数
+    gammas: &[F], // γ 值数组，//挑战的随机数
     prover_data: &ProverOnlyCircuitData<F, C, D>, // 仅用于证明者的电路数据
     common_data: &CommonCircuitData<F, D>, // 通用电路数据
 ) -> Vec<Vec<PolynomialValues<F>>> {
@@ -648,8 +651,8 @@ fn compute_quotient_polys<
     public_inputs_hash: &<<C as GenericConfig<D>>::InnerHasher as Hasher<F>>::Hash, // 公共输入的哈希值
     wires_commitment: &'a PolynomialBatch<F, C, D>, // 线值承诺
     zs_partial_products_and_lookup_commitment: &'a PolynomialBatch<F, C, D>, // Z 多项式和部分积的承诺
-    betas: &[F], // β 值数组
-    gammas: &[F], // γ 值数组
+    betas: &[F], // β 值数组，挑战的随机数
+    gammas: &[F], // γ 值数组，挑战的随机数
     deltas: &[F], // δ 值数组
     alphas: &[F], // α 值数组
 ) -> Vec<PolynomialCoeffs<F>> {

@@ -224,14 +224,15 @@ pub(crate) fn eval_vanishing_poly_base_batch<F: RichField + Extendable<D>, const
     };
 
     let mut res_batch: Vec<Vec<F>> = Vec::with_capacity(n);
-    println!("local_zs_batch: {:?}",local_zs_batch);
-    println!("next_zs_batch: {:?}",next_zs_batch);
-    println!("xs_batch: {:?}",xs_batch);
+    // println!("local_zs_batch: {:?}",local_zs_batch);
+    // println!("next_zs_batch: {:?}",next_zs_batch);
+    // println!("xs_batch: {:?}",xs_batch);
+    //f(x)在32个陪集点上计算
     for k in 0..n {
-        //xs_batch=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
+
         let index = indices_batch[k];
 
-        let x = xs_batch[k];
+        let x = xs_batch[k];//xs_batch为32阶子群的陪集
         let vars = vars_batch.view(k);
 
         let lookup_selectors: Vec<F> = (0..common_data.num_lookup_selectors)
@@ -295,15 +296,17 @@ pub(crate) fn eval_vanishing_poly_base_batch<F: RichField + Extendable<D>, const
 
             numerator_values.extend((0..num_routed_wires).map(|j| {
                 let wire_value = vars.local_wires[j];
-                let k_i = common_data.k_is[j];
+                let k_i = common_data.k_is[j];//H的陪集kH的移位k
                 let s_id = k_i * x;
                 wire_value + betas[i] * s_id + gammas[i]
             }));
+            //println!("common_data.ks: {:?}",common_data.k_is);
             denominator_values.extend((0..num_routed_wires).map(|j| {
                 let wire_value = vars.local_wires[j];
                 let s_sigma = s_sigmas[j];
                 wire_value + betas[i] * s_sigma + gammas[i]
             }));
+            //println!("denominator_values: {:?}",denominator_values);
 
             // The partial products considered for this iteration of `i`.
             let current_partial_products = &partial_products[i * num_prods..(i + 1) * num_prods];
@@ -316,6 +319,7 @@ pub(crate) fn eval_vanishing_poly_base_batch<F: RichField + Extendable<D>, const
                 z_gx,
                 max_degree,
             );
+            //println!("partial_product_checks: {:?}",partial_product_checks);
             vanishing_partial_products_terms.extend(partial_product_checks);
 
             numerator_values.clear();
@@ -328,12 +332,14 @@ pub(crate) fn eval_vanishing_poly_base_batch<F: RichField + Extendable<D>, const
             .chain(vanishing_all_lookup_terms.iter())
             .chain(constraint_terms);
         let res = plonk_common::reduce_with_powers_multi(vanishing_terms, alphas);
+        //println!("res: {:?}",res);
         res_batch.push(res);
 
         vanishing_z_1_terms.clear();
         vanishing_partial_products_terms.clear();
         vanishing_all_lookup_terms.clear();
     }
+    //println!("res_batch: {:?}",res_batch);
     res_batch
 }
 

@@ -249,13 +249,21 @@ PolynomialBatch<F, C, D>
         fri_params: &FriParams,
         timing: &mut TimingTree,
     ) -> FriProof<F, C::Hasher, D> {
+        // 确保维度 D 大于 1
         assert!(D > 1, "Not implemented for D=1.");
+
+        // 获取扩展域中的随机挑战 alpha
         let alpha = challenger.get_extension_challenge::<D>();
         let mut alpha = ReducingFactor::new(alpha);
 
-        // Final low-degree polynomial that goes into FRI.
+        // 初始化最终的低度多项式
         let mut final_poly = PolynomialCoeffs::empty();
 
+        // 每个批次 `i` 包含一个开点 `z_i` 和要在该点打开的多项式 `{f_ij}_j`
+        // 对于每个批次，我们计算组合多项式 `F_i = sum alpha^j f_ij`
+        // 最终多项式计算为 `final_poly = sum_i alpha^(k_i) (F_i(X) - F_i(z_i))/(X-z_i)`
+        // 其中 `k_i` 被选择为每个 alpha 的幂仅在最终和中出现一次
+        // 通常有两个批次用于在 `zeta` 和 `g * zeta` 处的开口
         // Each batch `i` consists of an opening point `z_i` and polynomials `{f_ij}_j` to be opened at that point.
         // For each batch, we compute the composition polynomial `F_i = sum alpha^j f_ij`,
         // where `alpha` is a random challenge in the extension field.
@@ -264,28 +272,34 @@ PolynomialBatch<F, C, D>
         // There are usually two batches for the openings at `zeta` and `g * zeta`.
         // The oracles used in Plonky2 are given in `FRI_ORACLES` in `plonky2/src/plonk/plonk_common.rs`.
         for FriBatchInfo { point, polynomials } in &instance.batches {
-            // Collect the coefficients of all the polynomials in `polynomials`.
+            // 收集所有多项式的系数
             let polys_coeff = polynomials.iter().map(|fri_poly| {
                 &oracles[fri_poly.oracle_index].polynomials[fri_poly.polynomial_index]
             });
+
+            // 计算组合多项式
             let composition_poly = timed!(
-                timing,
-                &format!("reduce batch of {} polynomials", polynomials.len()),
-                alpha.reduce_polys_base(polys_coeff)
-            );
+            timing,
+            &format!("reduce batch of {} polynomials", polynomials.len()),
+            alpha.reduce_polys_base(polys_coeff)
+        );
+
+            // 计算商多项式
             let mut quotient = composition_poly.divide_by_linear(*point);
-            quotient.coeffs.push(F::Extension::ZERO); // pad back to power of two
+            quotient.coeffs.push(F::Extension::ZERO); // 填充为二的幂次
             alpha.shift_poly(&mut final_poly);
             final_poly += quotient;
         }
 
+        // 计算最终多项式的低度扩展
         let lde_final_poly = final_poly.lde(fri_params.config.rate_bits);
         let lde_final_values = timed!(
-            timing,
-            &format!("perform final FFT {}", lde_final_poly.len()),
-            lde_final_poly.coset_fft(F::coset_shift().into())
-        );
+        timing,
+        &format!("perform final FFT {}", lde_final_poly.len()),
+        lde_final_poly.coset_fft(F::coset_shift().into())
+    );
 
+        // 生成 FRI 证明
         let fri_proof = fri_proof::<F, C, D>(
             &oracles
                 .par_iter()

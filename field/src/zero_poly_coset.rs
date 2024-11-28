@@ -209,4 +209,34 @@ mod tests {
         }
         println!("out: {:?}", out);
     }
+    #[test]
+    fn test_sub_group() {
+        type F = GoldilocksField;
+
+        let subgroup_k = F::two_adic_subgroup(2);
+
+        let coset_shift = F::coset_shift();
+        println!("2^2阶coset_shift: {:?}", coset_shift);
+
+        let coset_group_k = subgroup_k.iter().map(|x| coset_shift * *x).collect::<Vec<_>>();
+        println!("2^2阶coset_group_k: {:?}", coset_group_k);
+
+        let subgroup_k = F::two_adic_subgroup(3);
+        println!("2^3阶subgroup_k: {:?}", subgroup_k);
+
+        let coset_shift = F::coset_shift();
+        println!("2^3阶coset_shift: {:?}", coset_shift);
+
+        let coset_group_k = subgroup_k.iter().map(|x| coset_shift * *x).collect::<Vec<_>>();
+        println!("2^3阶coset_group_k: {:?}", coset_group_k);
+
+        let subgroup_k = F::two_adic_subgroup(5); // rate_bits = 3
+        println!("32阶subgroup_k: {:?}", subgroup_k);
+
+        let coset_shift = F::coset_shift();
+        println!("32阶coset_shift: {:?}", coset_shift);
+
+        let coset_group_k = subgroup_k.iter().map(|x| coset_shift * *x).collect::<Vec<_>>();
+        println!("32阶coset_group_k: {:?}", coset_group_k);
+    }
 }

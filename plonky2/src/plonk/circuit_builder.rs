@@ -1455,10 +1455,11 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         //println!("subgroup: {:?}", subgroup);
 
 
-        //计算陪集的移位生成元，即a*H中的a，H为子集.所以通过a即可得到子集H的全部陪集，degree=4，即门的个数，因此子群的阶为4
+        //计算陪集的移位，即a*H中的a，H为子集.所以通过a即可得到子集H的全部陪集，degree=4，即门的个数，因此子群的阶为4
         //只需要self.config.num_routed_wires个陪集即可。self.config.num_routed_wires=80
         //println!("degree_bits: {}, self.config.num_routed_wires: {}", degree_bits, self.config.num_routed_wires);
         let k_is = get_unique_coset_shifts(degree, self.config.num_routed_wires);
+        //println!("k_is: {:?}", k_is);
         // sigma_vecs：把wire[row,column]相同拷贝约束的邻居关系，使用陪集跟子集进行掩码，生成多项式，row选取子集，column选取陪集
         // forest：包含每个wire的parent
         let (sigma_vecs, forest) = timed!(
