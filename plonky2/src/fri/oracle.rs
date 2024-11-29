@@ -70,19 +70,6 @@ PolynomialBatch<F, C, D>
             "IFFT",
             values.into_par_iter().map(|v| v.ifft()).collect::<Vec<_>>()
         );
-
-        /*
-        //单线程调试模式
-        let mut coeffs = Vec::new();
-        for v in values {
-            //PolynomialValues { values: [0, 0, 12460551030817792791, 0] }
-            let tmp=v.ifft();
-            //PolynomialCoeffs { coeffs: [7726823775058094278, 10719920294356490043, 7726823775058094278, 10719920294356490043] }
-
-            coeffs.push(tmp);
-        }
-         */
-        let coeffs = timed!(timing, "IFFT", coeffs);
         // 从多项式系数创建多项式FRI承诺
         Self::from_coeffs(
             coeffs,
@@ -318,7 +305,7 @@ PolynomialBatch<F, C, D>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use plonky2_field::types::Field;
+    use plonky2_field::types::{Field, Sample};
     use plonky2_field::goldilocks_field::GoldilocksField;
     use crate::field::polynomial::PolynomialCoeffs;
     use crate::plonk::config::PoseidonGoldilocksConfig;
@@ -350,5 +337,67 @@ mod tests {
         for lde in lde_values {
             assert_eq!(lde.len(), polynomials[0].len() << rate_bits);
         }
+    }
+    #[test]
+    fn test_from_values() {
+        const D: usize = 2;
+        type C = PoseidonGoldilocksConfig;
+        type F = <C as GenericConfig<D>>::F;
+
+        let values = (0..8)
+            .map(|_| PolynomialValues::new(vec![F::rand(), F::rand(), F::rand(), F::rand()]))
+            .collect::<Vec<_>>();
+
+        let rate_bits = 3;
+        let blinding = true;
+        let cap_height = 4;
+        let mut timing = TimingTree::default();
+        let fft_root_table = None;
+
+        let polynomial_batch = PolynomialBatch::<F, C, D>::from_values(
+            values,
+            rate_bits,
+            blinding,
+            cap_height,
+            &mut timing,
+            fft_root_table,
+        );
+
+        // Add assertions to verify the correctness of the polynomial_batch
+        assert_eq!(polynomial_batch.polynomials.len(), 8);
+        assert_eq!(polynomial_batch.degree_log, 2);
+        assert_eq!(polynomial_batch.rate_bits, rate_bits);
+        assert_eq!(polynomial_batch.blinding, blinding);
+    }
+    #[test]
+    fn test_from_coeffs() {
+        const D: usize = 2;
+        type C = PoseidonGoldilocksConfig;
+        type F = <C as GenericConfig<D>>::F;
+
+        let values = (0..8)
+            .map(|_| PolynomialCoeffs::new(vec![F::rand(), F::rand(), F::rand(), F::rand()]))
+            .collect::<Vec<_>>();
+
+        let rate_bits = 3;
+        let blinding = false;
+        let cap_height = 4;
+        let mut timing = TimingTree::default();
+        let fft_root_table = None;
+
+        let polynomial_batch = PolynomialBatch::<F, C, D>::from_coeffs(
+            values,
+            rate_bits,
+            blinding,
+            cap_height,
+            &mut timing,
+            fft_root_table,
+        );
+
+        // Add assertions to verify the correctness of the polynomial_batch
+        assert_eq!(polynomial_batch.polynomials.len(), 8);
+        assert_eq!(polynomial_batch.degree_log, 2);
+        assert_eq!(polynomial_batch.rate_bits, rate_bits);
+        assert_eq!(polynomial_batch.blinding, blinding);
     }
 }
