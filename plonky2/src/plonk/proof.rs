@@ -86,7 +86,7 @@ pub struct ProofWithPublicInputs<
 }
 
 impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>
-    ProofWithPublicInputs<F, C, D>
+ProofWithPublicInputs<F, C, D>
 {
     pub fn compress(
         self,
@@ -144,7 +144,7 @@ pub struct CompressedProof<F: RichField + Extendable<D>, C: GenericConfig<D, F =
 }
 
 impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>
-    CompressedProof<F, C, D>
+CompressedProof<F, C, D>
 {
     /// Decompress the proof.
     pub(crate) fn decompress(
@@ -183,7 +183,7 @@ pub struct CompressedProofWithPublicInputs<
 }
 
 impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>
-    CompressedProofWithPublicInputs<F, C, D>
+CompressedProofWithPublicInputs<F, C, D>
 {
     pub fn decompress(
         self,
@@ -320,72 +320,99 @@ impl<F: RichField + Extendable<D>, const D: usize> OpeningSet<F, D> {
         quotient_polys_commitment: &PolynomialBatch<F, C, D>,
         common_data: &CommonCircuitData<F, D>,
     ) -> Self {
+        // 定义一个闭包，用于评估多项式在给定点 z 处的值
         let eval_commitment = |z: F::Extension, c: &PolynomialBatch<F, C, D>| {
             c.polynomials
-                .par_iter()
-                .map(|p| p.to_extension().eval(z))
-                .collect::<Vec<_>>()
+                .par_iter() // 并行迭代多项式
+                .map(|p| p.to_extension().eval(z)) // 将多项式转换为扩展域并在 z 处评估
+                .collect::<Vec<_>>() // 收集评估结果
         };
+
+        // 评估常量和 σ 多项式在 zeta 处的值
         let constants_sigmas_eval = eval_commitment(zeta, constants_sigmas_commitment);
 
-        // `zs_partial_products_lookup_eval` contains the permutation argument polynomials as well as lookup polynomials.
+        // 评估置换参数和查找多项式在 zeta 处的值
         let zs_partial_products_lookup_eval =
             eval_commitment(zeta, zs_partial_products_lookup_commitment);
+        // 评估置换参数和查找多项式在 g * zeta 处的值
         let zs_partial_products_lookup_next_eval =
             eval_commitment(g * zeta, zs_partial_products_lookup_commitment);
+        // 评估商多项式在 zeta 处的值
         let quotient_polys = eval_commitment(zeta, quotient_polys_commitment);
 
+        // 创建并返回 OpeningSet 实例
         Self {
+            // 提取常量多项式的评估值
             constants: constants_sigmas_eval[common_data.constants_range()].to_vec(),
+            // 提取 σ 多项式的评估值
             plonk_sigmas: constants_sigmas_eval[common_data.sigmas_range()].to_vec(),
+            // 评估 wire 多项式在 zeta 处的值
             wires: eval_commitment(zeta, wires_commitment),
+            // 提取置换参数多项式在 zeta 处的评估值
             plonk_zs: zs_partial_products_lookup_eval[common_data.zs_range()].to_vec(),
+            // 提取置换参数多项式在 g * zeta 处的评估值
             plonk_zs_next: zs_partial_products_lookup_next_eval[common_data.zs_range()].to_vec(),
+            // 提取部分积多项式的评估值
             partial_products: zs_partial_products_lookup_eval[common_data.partial_products_range()]
                 .to_vec(),
+            // 商多项式的评估值
             quotient_polys,
+            // 提取查找多项式在 zeta 处的评估值
             lookup_zs: zs_partial_products_lookup_eval[common_data.lookup_range()].to_vec(),
+            // 提取查找多项式在 g * zeta 处的评估值
             lookup_zs_next: zs_partial_products_lookup_next_eval[common_data.lookup_range()]
                 .to_vec(),
         }
     }
+
     pub(crate) fn to_fri_openings(&self) -> FriOpenings<F, D> {
+        // 检查是否存在查找多项式
         let has_lookup = !self.lookup_zs.is_empty();
+
+        // 评估 zeta 批次
         let zeta_batch = if has_lookup {
+            // 如果存在查找多项式，合并所有多项式的值
             FriOpeningBatch {
                 values: [
-                    self.constants.as_slice(),
-                    self.plonk_sigmas.as_slice(),
-                    self.wires.as_slice(),
-                    self.plonk_zs.as_slice(),
-                    self.partial_products.as_slice(),
-                    self.quotient_polys.as_slice(),
-                    self.lookup_zs.as_slice(),
+                    self.constants.as_slice(), // 常量多项式的值
+                    self.plonk_sigmas.as_slice(), // σ 多项式的值
+                    self.wires.as_slice(), // wire 多项式的值
+                    self.plonk_zs.as_slice(), // 置换参数多项式的值
+                    self.partial_products.as_slice(), // 部分积多项式的值
+                    self.quotient_polys.as_slice(), // 商多项式的值
+                    self.lookup_zs.as_slice(), // 查找多项式的值
                 ]
-                .concat(),
+                    .concat(), // 合并所有值
             }
         } else {
+            // 如果不存在查找多项式，合并除查找多项式外的所有值
             FriOpeningBatch {
                 values: [
-                    self.constants.as_slice(),
-                    self.plonk_sigmas.as_slice(),
-                    self.wires.as_slice(),
-                    self.plonk_zs.as_slice(),
-                    self.partial_products.as_slice(),
-                    self.quotient_polys.as_slice(),
+                    self.constants.as_slice(), // 常量多项式的值
+                    self.plonk_sigmas.as_slice(), // σ 多项式的值
+                    self.wires.as_slice(), // wire 多项式的值
+                    self.plonk_zs.as_slice(), // 置换参数多项式的值
+                    self.partial_products.as_slice(), // 部分积多项式的值
+                    self.quotient_polys.as_slice(), // 商多项式的值
                 ]
-                .concat(),
+                    .concat(), // 合并所有值
             }
         };
+
+        // 评估 zeta_next 批次
         let zeta_next_batch = if has_lookup {
+            // 如果存在查找多项式，合并置换参数多项式和查找多项式的值
             FriOpeningBatch {
                 values: [self.plonk_zs_next.clone(), self.lookup_zs_next.clone()].concat(),
             }
         } else {
+            // 如果不存在查找多项式，仅合并置换参数多项式的值
             FriOpeningBatch {
                 values: self.plonk_zs_next.clone(),
             }
         };
+
+        // 返回 FriOpenings 实例，包含 zeta 和 zeta_next 批次
         FriOpenings {
             batches: vec![zeta_batch, zeta_next_batch],
         }
@@ -420,7 +447,7 @@ impl<const D: usize> OpeningSetTarget<D> {
                     self.quotient_polys.as_slice(),
                     self.lookup_zs.as_slice(),
                 ]
-                .concat(),
+                    .concat(),
             }
         } else {
             FriOpeningBatchTarget {
@@ -432,7 +459,7 @@ impl<const D: usize> OpeningSetTarget<D> {
                     self.partial_products.as_slice(),
                     self.quotient_polys.as_slice(),
                 ]
-                .concat(),
+                    .concat(),
             }
         };
         let zeta_next_batch = if has_lookup {
@@ -477,36 +504,38 @@ mod tests {
         type C = PoseidonGoldilocksConfig;
         type F = <C as GenericConfig<D>>::F;
 
+        // 配置电路参数
         let mut config = CircuitConfig::standard_recursion_config();
         config.fri_config.reduction_strategy = FriReductionStrategy::Fixed(vec![1, 1]);
         config.fri_config.num_query_rounds = 50;
 
+        // 创建部分见证
         let pw = PartialWitness::new();
         let mut builder = CircuitBuilder::<F, D>::new(config);
 
-        // Build dummy circuit to get a valid proof.
-        let x = F::rand();
-        let y = F::rand();
-        let z = x * y;
-        let xt = builder.constant(x);
-        let yt = builder.constant(y);
-        let zt = builder.constant(z);
-        let comp_zt = builder.mul(xt, yt);
-        builder.connect(zt, comp_zt);
+        // 构建一个虚拟电路以获得有效证明
+        let x = F::rand(); // 随机生成 x
+        let y = F::rand(); // 随机生成 y
+        let z = x * y; // 计算 z = x * y
+        let xt = builder.constant(x); // 将 x 作为常量添加到电路中
+        let yt = builder.constant(y); // 将 y 作为常量添加到电路中
+        let zt = builder.constant(z); // 将 z 作为常量添加到电路中
+        let comp_zt = builder.mul(xt, yt); // 在电路中计算 xt * yt
+        builder.connect(zt, comp_zt); // 连接 zt 和 comp_zt，确保它们相等
         for _ in 0..100 {
-            builder.add_gate(NoopGate, vec![]);
+            builder.add_gate(NoopGate, vec![]); // 添加 100 个 NoopGate 到电路中
         }
-        let data = builder.build::<C>();
-        let proof = data.prove(pw)?;
-        verify(proof.clone(), &data.verifier_only, &data.common)?;
+        let data = builder.build::<C>(); // 构建电路数据
+        let proof = data.prove(pw)?; // 生成证明
+        verify(proof.clone(), &data.verifier_only, &data.common)?; // 验证证明
 
-        // Verify that `decompress ∘ compress = identity`.
-        let compressed_proof = data.compress(proof.clone())?;
-        let decompressed_compressed_proof = data.decompress(compressed_proof.clone())?;
-        assert_eq!(proof, decompressed_compressed_proof);
+        // 验证 `decompress ∘ compress = identity`
+        let compressed_proof = data.compress(proof.clone())?; // 压缩证明
+        let decompressed_compressed_proof = data.decompress(compressed_proof.clone())?; // 解压缩证明
+        assert_eq!(proof, decompressed_compressed_proof); // 确认解压缩后的证明与原始证明相同
 
-        verify(proof, &data.verifier_only, &data.common)?;
-        data.verify_compressed(compressed_proof)
+        verify(proof, &data.verifier_only, &data.common)?; // 再次验证原始证明
+        data.verify_compressed(compressed_proof) // 验证压缩后的证明
     }
 
     #[test]
