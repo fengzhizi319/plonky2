@@ -53,9 +53,10 @@ impl<F: RichField, H: Hasher<F>> Challenger<F, H> {
     where
         F: RichField + Extendable<D>,
     {
+        //element.to_basefield_array(),1659788852818794551 + 14049248431789152630*a -> [1659788852818794551, 14049248431789152630]
         self.observe_elements(&element.to_basefield_array());
     }
-
+    ///增加hash输入
     pub fn observe_elements(&mut self, elements: &[F]) {
         for &element in elements {
             self.observe_element(element);

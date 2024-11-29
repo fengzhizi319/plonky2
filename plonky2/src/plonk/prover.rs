@@ -290,7 +290,7 @@ where
             &alphas,
         )
     );
-    println!("quotient_polys:{:?}",quotient_polys);
+    //println!("quotient_polys:{:?}",quotient_polys);
     //每degree个分成一组。
     let all_quotient_poly_chunks: Vec<PolynomialCoeffs<F>> = timed!(
         timing,
@@ -306,7 +306,7 @@ where
             })
             .collect()
     );
-    println!("all_quotient_poly_chunks:{:?}",all_quotient_poly_chunks);
+    //println!("all_quotient_poly_chunks:{:?}",all_quotient_poly_chunks);
 
     let quotient_polys_commitment = timed!(
         timing,
@@ -325,10 +325,13 @@ where
     challenger.observe_cap::<C::Hasher>(&quotient_polys_commitment.merkle_tree.cap);
 
     let zeta = challenger.get_extension_challenge::<D>();
+    //zeta:12838496952489466182 + 681132133522489446*a
     // To avoid leaking witness data, we want to ensure that our opening locations, `zeta` and
     // `g * zeta`, are not in our subgroup `H`. It suffices to check `zeta` only, since
     // `(g * zeta)^n = zeta^n`, where `n` is the order of `g`.
     let g = F::Extension::primitive_root_of_unity(common_data.degree_bits());
+    //g:281474976710656 + 0*a
+
     ensure!(
         zeta.exp_power_of_2(common_data.degree_bits()) != F::Extension::ONE,
         "Opening point is in the subgroup."
@@ -347,7 +350,9 @@ where
             common_data
         )
     );
+    //把所有的挑战点的值，以及对应的多项式值，放到hash中作为输入
     challenger.observe_openings(&openings.to_fri_openings());
+    //
     let instance = common_data.get_fri_instance(zeta);
 
     let opening_proof = timed!(
