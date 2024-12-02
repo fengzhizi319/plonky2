@@ -260,9 +260,19 @@ PolynomialBatch<F, C, D>
         // The oracles used in Plonky2 are given in `FRI_ORACLES` in `plonky2/src/plonk/plonk_common.rs`.
         for FriBatchInfo { point, polynomials } in &instance.batches {
             // 收集所有多项式的系数
+            // let polys_coeff = polynomials.iter().map(|fri_poly| {
+            //     &oracles[fri_poly.oracle_index].polynomials[fri_poly.polynomial_index]
+            // });
+            // Collect all polynomial coefficients
             let polys_coeff = polynomials.iter().map(|fri_poly| {
-                &oracles[fri_poly.oracle_index].polynomials[fri_poly.polynomial_index]
+                // Access the oracle at the specified index
+                let oracle = &oracles[fri_poly.oracle_index];
+                // Access the polynomial at the specified index within the oracle
+                let polynomial = &oracle.polynomials[fri_poly.polynomial_index];
+                // Return the polynomial coefficients
+                polynomial
             });
+
 
             // 计算组合多项式
             let composition_poly = timed!(
