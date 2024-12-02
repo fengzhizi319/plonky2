@@ -230,8 +230,8 @@ PolynomialBatch<F, C, D>
 
     /// Produces a batch opening proof.
     pub fn prove_openings(
-        instance: &FriInstanceInfo<F, D>,
-        oracles: &[&Self],
+        instance: &FriInstanceInfo<F, D>,//点值
+        oracles: &[&Self],//4种承诺
         challenger: &mut Challenger<F, C::Hasher>,
         fri_params: &FriParams,
         timing: &mut TimingTree,
@@ -250,7 +250,7 @@ PolynomialBatch<F, C, D>
         // 对于每个批次，我们计算组合多项式 `F_i = sum alpha^j f_ij`
         // 最终多项式计算为 `final_poly = sum_i alpha^(k_i) (F_i(X) - F_i(z_i))/(X-z_i)`
         // 其中 `k_i` 被选择为每个 alpha 的幂仅在最终和中出现一次
-        // 通常有两个批次用于在 `zeta` 和 `g * zeta` 处的开口
+        // 通常有两个批次用于在 `zeta` 和 `g * zeta` 两个打开点
         // Each batch `i` consists of an opening point `z_i` and polynomials `{f_ij}_j` to be opened at that point.
         // For each batch, we compute the composition polynomial `F_i = sum alpha^j f_ij`,
         // where `alpha` is a random challenge in the extension field.
@@ -259,29 +259,18 @@ PolynomialBatch<F, C, D>
         // There are usually two batches for the openings at `zeta` and `g * zeta`.
         // The oracles used in Plonky2 are given in `FRI_ORACLES` in `plonky2/src/plonk/plonk_common.rs`.
         for FriBatchInfo { point, polynomials } in &instance.batches {
-            // 收集所有多项式的系数
-            // let polys_coeff = polynomials.iter().map(|fri_poly| {
-            //     &oracles[fri_poly.oracle_index].polynomials[fri_poly.polynomial_index]
-            // });
-            // Collect all polynomial coefficients
+            let t0=polynomials[0];
+
+            //收集所有多项式的系数
             let polys_coeff = polynomials.iter().map(|fri_poly| {
-                println!("fri_poly={:?}",fri_poly);
-                println!("fri_poly.oracle_index:{},fri_poly.polynomial_index:{}",fri_poly.oracle_index,fri_poly.polynomial_index);
-                // Access the oracle at the specified index
-                let oracle = &oracles[fri_poly.oracle_index];
-                // Access the polynomial at the specified index within the oracle
-                let polynomial = &oracle.polynomials[fri_poly.polynomial_index];
-                // Return the polynomial coefficients
-                polynomial
+                &oracles[fri_poly.oracle_index].polynomials[fri_poly.polynomial_index]
             });
-
-
             // 计算组合多项式
             let composition_poly = timed!(
             timing,
             &format!("reduce batch of {} polynomials", polynomials.len()),
             alpha.reduce_polys_base(polys_coeff)
-        );
+            );
 
             // 计算商多项式
             let mut quotient = composition_poly.divide_by_linear(*point);
@@ -290,13 +279,14 @@ PolynomialBatch<F, C, D>
             final_poly += quotient;
         }
 
-        // 计算最终多项式的低度扩展
+        // 计算最终多项式的低度扩展，系数扩大为2^rate_bits
         let lde_final_poly = final_poly.lde(fri_params.config.rate_bits);
         let lde_final_values = timed!(
         timing,
         &format!("perform final FFT {}", lde_final_poly.len()),
+        //求在陪集上的点值表示
         lde_final_poly.coset_fft(F::coset_shift().into())
-    );
+        );
 
         // 生成 FRI 证明
         let fri_proof = fri_proof::<F, C, D>(

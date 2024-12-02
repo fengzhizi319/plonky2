@@ -76,6 +76,9 @@ fn fri_committed_trees<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>,
     let mut trees = Vec::with_capacity(fri_params.reduction_arity_bits.len());
 
     let mut shift = F::MULTIPLICATIVE_GROUP_GENERATOR;
+    // println!("coeffs: {:?}", coeffs);
+    // println!("values: {:?}", values);
+    //reduction_arity_bits=vec![]
     for arity_bits in &fri_params.reduction_arity_bits {
         let arity = 1 << arity_bits;
 
@@ -103,11 +106,12 @@ fn fri_committed_trees<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>,
         values = coeffs.coset_fft(shift.into())
     }
 
+    //求掉额外低度扩展的多项式0系数
     // The coefficients being removed here should always be zero.
     coeffs
         .coeffs
         .truncate(coeffs.len() >> fri_params.config.rate_bits);
-
+    //把系数添加到hash中
     challenger.observe_extension_elements(&coeffs.coeffs);
     (trees, coeffs)
 }

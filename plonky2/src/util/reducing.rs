@@ -79,18 +79,26 @@ impl<F: Field> ReducingFactor<F> {
             acc
         })
     }
-
+    ///用一个随机数来组合所有的多项式，如a^0 * f_0+a^1 * f_1+...+a^(n-1) * f_{n-1}，其中a是一个随机数,具体为参数self.base，f_i是多项式
     pub fn reduce_polys_base<BF: Extendable<D, Extension = F>, const D: usize>(
         &mut self,
         polys: impl IntoIterator<Item = impl Borrow<PolynomialCoeffs<BF>>>,
     ) -> PolynomialCoeffs<F> {
+        let base = self.base;
+        let mut base_powers = base.powers();
         self.base
+            // Generate an iterator of powers of `self.base`
             .powers()
+            // Zip the iterator of powers with the `polys` iterator
             .zip(polys)
+            // Map each pair of `(base_power, poly)` to the result of multiplying the polynomial by the base power
             .map(|(base_power, poly)| {
+                // Increment the count of multiplications
                 self.count += 1;
+                // Multiply the polynomial by the base power and return the result
                 poly.borrow().mul_extension(base_power)
             })
+            // Sum all the resulting polynomials
             .sum()
     }
 

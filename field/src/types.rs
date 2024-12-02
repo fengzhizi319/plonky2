@@ -369,6 +369,7 @@ pub trait Field:
         res
     }
 
+    ///计算模幂，幂指数为U64
     fn exp_u64(&self, power: u64) -> Self {
         let mut current = *self;
         let mut product = Self::ONE;
