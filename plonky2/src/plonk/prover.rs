@@ -352,9 +352,9 @@ where
     );
     //把所有的挑战点的值，以及对应的多项式值，放到hash中作为输入
     challenger.observe_openings(&openings.to_fri_openings());
-    //
+    //zeta_batch, zeta_next_batch在g*zeta点打开
     let instance = common_data.get_fri_instance(zeta);
-
+    //println!("instance:{:?}",instance);
     let opening_proof = timed!(
         timing,
         "compute opening proofs",
