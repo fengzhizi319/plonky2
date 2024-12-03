@@ -202,11 +202,20 @@ fn fri_prover_query_rounds<
     n: usize,
     fri_params: &FriParams,
 ) -> Vec<FriQueryRound<F, C::Hasher, D>> {
+    // challenger
+    //     .get_n_challenges(fri_params.config.num_query_rounds)//num_query_rounds=28
+    //     .into_par_iter()
+    //     .map(|rand| {
+    //         let x_index = rand.to_canonical_u64() as usize % n;
+    //         fri_prover_query_round::<F, C, D>(initial_merkle_trees, trees, x_index, fri_params)
+    //     })
+    //     .collect()
     challenger
         .get_n_challenges(fri_params.config.num_query_rounds)//num_query_rounds=28
-        .into_par_iter()
+        .into_iter()
         .map(|rand| {
             let x_index = rand.to_canonical_u64() as usize % n;
+            println!("x_index:{}",x_index);
             fri_prover_query_round::<F, C, D>(initial_merkle_trees, trees, x_index, fri_params)
         })
         .collect()
@@ -224,11 +233,16 @@ fn fri_prover_query_round<
 ) -> FriQueryRound<F, C::Hasher, D> {
     let mut query_steps = Vec::new(); // 存储查询步骤的向量
     // 获取初始 Merkle 树的证明
-    let initial_proof = initial_merkle_trees
-        .iter() // 迭代初始 Merkle 树
-        .map(|t| (t.get(x_index).to_vec(), t.prove(x_index))) // 获取索引处的值并生成证明
-        .collect::<Vec<_>>(); // 收集结果为向量
-
+    // let initial_proof = initial_merkle_trees
+    //     .iter() // 迭代初始 Merkle 树
+    //     .map(|t| (t.get(x_index).to_vec(), t.prove(x_index))) // 获取索引处的值并生成证明
+    //     .collect::<Vec<_>>(); // 收集结果为向量
+    let mut initial_proof = Vec::new(); // 创建一个空向量来存储结果
+    for t in initial_merkle_trees {
+        let value = t.get(x_index).to_vec(); // 获取索引处的值并转换为向量
+        let proof = t.prove(x_index); // 生成证明
+        initial_proof.push((value, proof)); // 将值和证明作为元组添加到向量中
+    }
     // 遍历 Merkle 树
     for (i, tree) in trees.iter().enumerate() {
         let arity_bits = fri_params.reduction_arity_bits[i]; // 获取当前树的 arity bits
