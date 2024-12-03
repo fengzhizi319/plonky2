@@ -43,7 +43,7 @@ pub fn fri_proof<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const
         )
     );
 
-    // PoW phase
+    // PoW phase，返回一个challenger结果前面几个为全0的输入消息
     let pow_witness = timed!(
         timing,
         "find proof-of-work witness",
@@ -117,6 +117,7 @@ fn fri_committed_trees<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>,
 }
 
 /// Performs the proof-of-work (a.k.a. grinding) step of the FRI protocol. Returns the PoW witness.
+/// 执行 FRI 协议的工作量证明（PoW）步骤。返回 PoW 见证。
 pub(crate) fn fri_proof_of_work<
     F: RichField + Extendable<D>,
     C: GenericConfig<D, F = F>,
@@ -125,6 +126,11 @@ pub(crate) fn fri_proof_of_work<
     challenger: &mut Challenger<F, C::Hasher>,
     config: &FriConfig,
 ) -> F {
+    // Calculate the minimum number of leading zeros required.
+    // 计算所需的最小前导零位数
+    //proof_of_work_bits=16
+    //F::order().bits()=64
+
     let min_leading_zeros = config.proof_of_work_bits + (64 - F::order().bits()) as u32;
 
     // The easiest implementation would be repeatedly clone our Challenger. With each clone, we'd
@@ -143,17 +149,33 @@ pub(crate) fn fri_proof_of_work<
     // state with any inputs (excluding the PoW witness candidate). The second step is to overwrite
     // one more element of our sponge state with the candidate, then apply the permutation,
     // obtaining our duplex's post-state which contains the PoW response.
+    //
+    // 最简单的实现是反复克隆我们的 Challenger。每次克隆时，我们会观察一个递增的 PoW 见证，然后获取 PoW 响应。
+    // 如果它包含足够的前导零，我们就结束搜索，并将此克隆存储为我们的新 Challenger。
+    //
+    // 然而，性能在这里是关键。我们希望避免克隆 Challenger，特别是因为它存储了向量，这意味着分配。
+    // 我们希望有一个更紧凑的状态来克隆。
+    //
+    // 我们知道在发送 PoW 见证后会立即执行一个双工操作，因此我们可以忽略任何 output_buffer，因为它将被无效化。
+    // 我们还知道 input_buffer.len() < H::Permutation::WIDTH，这是 Challenger 的一个不变量。
+    //
+    // 我们将双工操作分为两步，一步可以现在执行，另一部分取决于 PoW 见证候选者。
+    // 第一步是用任何输入（不包括 PoW 见证候选者）覆盖我们的海绵状态。
+    // 第二步是用候选者覆盖海绵状态的另一个元素，然后应用置换，获得包含 PoW 响应的双工后状态。
     let mut duplex_intermediate_state = challenger.sponge_state;
     let witness_input_pos = challenger.input_buffer.len();
     duplex_intermediate_state.set_from_iter(challenger.input_buffer.clone(), 0);
+    let t1=vec![1];
 
+    // Find a PoW witness within the range that meets the condition.
+    // 在范围内查找满足条件的 PoW 见证
     let pow_witness = (0..=F::NEG_ONE.to_canonical_u64())
         .into_par_iter()
         .find_any(|&candidate| {
             let mut duplex_state = duplex_intermediate_state;
-            duplex_state.set_elt(F::from_canonical_u64(candidate), witness_input_pos);
-            duplex_state.permute();
-            let pow_response = duplex_state.squeeze().iter().last().unwrap();
+            duplex_state.set_elt(F::from_canonical_u64(candidate), witness_input_pos);//设置hash运算的输入
+            duplex_state.permute();//进行hash运算
+            let pow_response = duplex_state.squeeze().iter().last().unwrap();//得到运算结果
             let leading_zeros = pow_response.to_canonical_u64().leading_zeros();
             leading_zeros >= min_leading_zeros
         })
@@ -161,6 +183,7 @@ pub(crate) fn fri_proof_of_work<
         .expect("Proof of work failed. This is highly unlikely!");
 
     // Recompute pow_response using our normal Challenger code, and make sure it matches.
+    // 使用我们正常的 Challenger 代码重新计算 pow_response，并确保它匹配。
     challenger.observe_element(pow_witness);
     let pow_response = challenger.get_challenge();
     let leading_zeros = pow_response.to_canonical_u64().leading_zeros();
@@ -180,7 +203,7 @@ fn fri_prover_query_rounds<
     fri_params: &FriParams,
 ) -> Vec<FriQueryRound<F, C::Hasher, D>> {
     challenger
-        .get_n_challenges(fri_params.config.num_query_rounds)
+        .get_n_challenges(fri_params.config.num_query_rounds)//num_query_rounds=28
         .into_par_iter()
         .map(|rand| {
             let x_index = rand.to_canonical_u64() as usize % n;
@@ -194,32 +217,38 @@ fn fri_prover_query_round<
     C: GenericConfig<D, F = F>,
     const D: usize,
 >(
-    initial_merkle_trees: &[&MerkleTree<F, C::Hasher>],
-    trees: &[MerkleTree<F, C::Hasher>],
-    mut x_index: usize,
-    fri_params: &FriParams,
+    initial_merkle_trees: &[&MerkleTree<F, C::Hasher>], // 初始 Merkle 树的引用数组
+    trees: &[MerkleTree<F, C::Hasher>], // Merkle 树的引用数组
+    mut x_index: usize, // 索引值
+    fri_params: &FriParams, // FRI 参数
 ) -> FriQueryRound<F, C::Hasher, D> {
-    let mut query_steps = Vec::new();
+    let mut query_steps = Vec::new(); // 存储查询步骤的向量
+    // 获取初始 Merkle 树的证明
     let initial_proof = initial_merkle_trees
-        .iter()
-        .map(|t| (t.get(x_index).to_vec(), t.prove(x_index)))
-        .collect::<Vec<_>>();
-    for (i, tree) in trees.iter().enumerate() {
-        let arity_bits = fri_params.reduction_arity_bits[i];
-        let evals = unflatten(tree.get(x_index >> arity_bits));
-        let merkle_proof = tree.prove(x_index >> arity_bits);
+        .iter() // 迭代初始 Merkle 树
+        .map(|t| (t.get(x_index).to_vec(), t.prove(x_index))) // 获取索引处的值并生成证明
+        .collect::<Vec<_>>(); // 收集结果为向量
 
+    // 遍历 Merkle 树
+    for (i, tree) in trees.iter().enumerate() {
+        let arity_bits = fri_params.reduction_arity_bits[i]; // 获取当前树的 arity bits
+        let evals = unflatten(tree.get(x_index >> arity_bits)); // 获取评估值并展开
+        let merkle_proof = tree.prove(x_index >> arity_bits); // 生成 Merkle 证明
+
+        // 将评估值和 Merkle 证明添加到查询步骤
         query_steps.push(FriQueryStep {
             evals,
             merkle_proof,
         });
 
-        x_index >>= arity_bits;
+        x_index >>= arity_bits; // 更新索引值
     }
+
+    // 返回 FRI 查询轮次
     FriQueryRound {
         initial_trees_proof: FriInitialTreeProof {
-            evals_proofs: initial_proof,
+            evals_proofs: initial_proof, // 初始树的评估证明
         },
-        steps: query_steps,
+        steps: query_steps, // 查询步骤
     }
 }
