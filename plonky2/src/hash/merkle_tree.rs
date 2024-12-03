@@ -57,6 +57,24 @@ pub struct MerkleTree<F: RichField, H: Hasher<F>> {
     pub digests: Vec<H::Hash>,
 
     /// Merkle 树的顶层节点（Merkle cap）。
+    /*
+    在 MerkleTree 结构体中，cap 表示的是 Merkle 树的顶层节点（Merkle cap）。
+    Merkle cap 是 Merkle 树中从根节点开始的第 h 层。它可以用来代替根节点来验证 Merkle 路径，
+    这样路径会比原来短 h 个元素。  具体来说，cap 包含了树中某一高度的节点的哈希值，这些哈希值
+    可以用于验证较短的 Merkle 路径。这样做的好处是可以减少验证路径的长度，从而提高验证效率。
+     以下是一个简单的例子来说明 cap 的作用：  假设我们有一个包含 8 个叶子节点的 Merkle 树，
+     树的高度为 3（从根节点到叶子节点的层数）。如果我们设置 cap_height 为 1，那么 cap 将包
+     含树中第 1 层的节点的哈希值。
+             Root
+           /      \
+          A         B
+         / \        / \
+       C     D    E   F
+      / \   / \   / \  / \
+     L1 L2 L3 L4 L5 L6 L7 L8
+     在这个例子中，cap 将包含节点 A 和 B 的哈希值。我们可以使用这些哈希值来验证从叶子节点到
+     节点 A 或 B 的路径，而不需要一直验证到根节点。这将减少验证路径的长度，从而提高验证效率
+     */
     pub cap: MerkleCap<F, H>,
 }
 
@@ -131,17 +149,24 @@ pub(crate) fn fill_digests_buf<F: RichField, H: Hasher<F>>(
         return;
     }
 
+    // 计算子树哈希值的长度
     let subtree_digests_len = digests_buf.len() >> cap_height;
+    // 计算子树叶子节点的长度
     let subtree_leaves_len = leaves.len() >> cap_height;
+    // 将哈希值缓冲区按子树哈希值长度分块
     let digests_chunks = digests_buf.par_chunks_exact_mut(subtree_digests_len);
+    // 将叶子节点按子树叶子节点长度分块
     let leaves_chunks = leaves.par_chunks_exact(subtree_leaves_len);
+    // 确保哈希值分块的数量与 Merkle cap 的长度一致
     assert_eq!(digests_chunks.len(), cap_buf.len());
+    // 确保哈希值分块的数量���叶子节点分块的数量一致
     assert_eq!(digests_chunks.len(), leaves_chunks.len());
+    // 对每个子树进行处理
     digests_chunks.zip(cap_buf).zip(leaves_chunks).for_each(
         |((subtree_digests, subtree_cap), subtree_leaves)| {
-            // We have `1 << cap_height` sub-trees, one for each entry in `cap`. They are totally
-            // independent, so we schedule one task for each. `digests_buf` and `leaves` are split
-            // into `1 << cap_height` slices, one for each sub-tree.
+            // 我们有 `1 << cap_height` 个子树，每个子树对应 `cap` 中的一个条目。
+            // 它们是完全独立的，所以我们为每个子树安排一个任务。
+            // `digests_buf` 和 `leaves` 被分割成 `1 << cap_height` 个切片，每个子树一个。
             subtree_cap.write(fill_subtree::<F, H>(subtree_digests, subtree_leaves));
         },
     );
@@ -232,6 +257,23 @@ pub(crate) fn merkle_tree_prove<F: RichField, H: Hasher<F>>(
         .collect() // 收集结果为向量
 }
 impl<F: RichField, H: Hasher<F>> MerkleTree<F, H> {
+    /*
+    在 MerkleTree 结构体中，cap_height 表示的是 Merkle 树顶层节点（Merkle cap）的高度。
+    具体来说，cap_height 决定了从根节点开始的第 h 层节点将被包含在 cap 中。cap 可以用来代替
+    根节点来验证 Merkle 路径，这样路径会比原来短 h 个元素。  以下是一个简单的例子来说明
+    cap_height 的作用：  假设我们有一个包含 8 个叶子节点的 Merkle 树，树的高度为 3
+    （从根节点到叶子节点的层数）。如果我们设置 cap_height 为 1，那么 cap 将包含树中
+    第 1 层的节点的哈希值。
+             Root
+           /      \
+          A         B
+         / \        / \
+       C     D    E   F
+      / \   / \   / \  / \
+     L1 L2 L3 L4 L5 L6 L7 L8
+    在这个例子中，cap 将包含节点 A 和 B 的哈希值。我们可以使用这些哈希值来验证从叶子节点
+    到节点 A 或 B 的路径，而不需要一直验证到根节点。这将减少验证路径的长度，从而提高验证效率。
+     */
     pub fn new(leaves: Vec<Vec<F>>, cap_height: usize) -> Self {
         // 计算叶子节点数量的对数（以 2 为底）
         let log2_leaves_len = log2_strict(leaves.len());
