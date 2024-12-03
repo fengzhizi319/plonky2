@@ -147,7 +147,7 @@ pub(crate) fn fill_digests_buf<F: RichField, H: Hasher<F>>(
     );
 }
 
-pub(crate) fn merkle_tree_prove<F: RichField, H: Hasher<F>>(
+pub(crate) fn merkle_tree_prove1<F: RichField, H: Hasher<F>>(
     leaf_index: usize,
     leaves_len: usize,
     cap_height: usize,
@@ -187,10 +187,55 @@ pub(crate) fn merkle_tree_prove<F: RichField, H: Hasher<F>>(
         })
         .collect()
 }
+pub(crate) fn merkle_tree_prove<F: RichField, H: Hasher<F>>(
+    leaf_index: usize, // 叶子节点的索引
+    leaves_len: usize, // 叶子节点的数量
+    cap_height: usize, // Merkle 树顶层节点的高度
+    digests: &[H::Hash], // Merkle 树中的哈希值
+) -> Vec<H::Hash> {
+    // 计算从叶子节点到顶层节点的层数
+    let num_layers = log2_strict(leaves_len) - cap_height;
+    // 确保叶子节点索引在有效范围内
+    debug_assert_eq!(leaf_index >> (cap_height + num_layers), 0);
 
+    // 计算哈希值的总长度
+    let digest_len = 2 * (leaves_len - (1 << cap_height));
+    // 确保哈希值的长度与计算的长度一致
+    assert_eq!(digest_len, digests.len());
+
+    // 获取子树的哈希值
+    let digest_tree: &[H::Hash] = {
+        let tree_index = leaf_index >> num_layers; // 计算子树的索引
+        let tree_len = digest_len >> cap_height; // 计算子树的长度
+        &digests[tree_len * tree_index..tree_len * (tree_index + 1)] // 获取子树的哈希值
+    };
+
+    // 屏蔽高位以获取子树内的索引
+    let mut pair_index = leaf_index & ((1 << num_layers) - 1);
+    (0..num_layers)
+        .map(|i| {
+            let parity = pair_index & 1; // 计算奇偶性
+            pair_index >>= 1; // 更新索引
+
+            // 各层的数据交错排列如下：
+            // [第0层, 第1层, 第0层, 第2层, 第0层, 第1层, 第0层, 第3层, ...]。
+            // 上述每一项都是一对兄弟节点。
+            // `pair_index` 是层 `i` 中对的索引。
+            // 该对在 `digests` 中的索引为
+            // `pair_index * 2 ** (i + 1) + (2 ** i - 1)`。
+            let siblings_index = (pair_index << (i + 1)) + (1 << i) - 1;
+            // 我们有一个对的索引，但我们需要兄弟节点的索引。
+            // 将对的索引加倍以获得左兄弟节点的索引。如果要检索右兄弟节点，则有条件地加 `1`。
+            let sibling_index = 2 * siblings_index + (1 - parity);
+            digest_tree[sibling_index] // 返回兄弟节点的哈希值
+        })
+        .collect() // 收集结果为向量
+}
 impl<F: RichField, H: Hasher<F>> MerkleTree<F, H> {
     pub fn new(leaves: Vec<Vec<F>>, cap_height: usize) -> Self {
+        // 计算叶子节点数量的对数（以 2 为底）
         let log2_leaves_len = log2_strict(leaves.len());
+        // 确保 cap_height 不大于叶子节点数量的对数
         assert!(
             cap_height <= log2_leaves_len,
             "cap_height={} should be at most log2(leaves.len())={}",
@@ -198,27 +243,34 @@ impl<F: RichField, H: Hasher<F>> MerkleTree<F, H> {
             log2_leaves_len
         );
 
+        // 计算哈希值的数量
         let num_digests = 2 * (leaves.len() - (1 << cap_height));
+        // 为哈希值分配空间
         let mut digests = Vec::with_capacity(num_digests);
 
+        // 计算 Merkle cap 的长度
         let len_cap = 1 << cap_height;
+        // 为 Merkle cap 分配空间
         let mut cap = Vec::with_capacity(len_cap);
 
+        // 获取哈希值缓冲区
         let digests_buf = capacity_up_to_mut(&mut digests, num_digests);
+        // 获取 Merkle cap 缓冲区
         let cap_buf = capacity_up_to_mut(&mut cap, len_cap);
+        // 填充哈希值缓冲区和 Merkle cap 缓冲区
         fill_digests_buf::<F, H>(digests_buf, cap_buf, &leaves[..], cap_height);
 
         unsafe {
-            // SAFETY: `fill_digests_buf` and `cap` initialized the spare capacity up to
-            // `num_digests` and `len_cap`, resp.
+            // 安全：`fill_digests_buf` 和 `cap` 初始化了备用容量，分别为 `num_digests` 和 `len_cap`
             digests.set_len(num_digests);
             cap.set_len(len_cap);
         }
 
+        // 返回 MerkleTree 实例
         Self {
-            leaves,
-            digests,
-            cap: MerkleCap(cap),
+            leaves, // 叶子节点
+            digests, // 哈希值
+            cap: MerkleCap(cap), // Merkle cap
         }
     }
 
@@ -307,5 +359,24 @@ pub(crate) mod tests {
         verify_all_leaves::<F, C, D>(leaves, 1)?;
 
         Ok(())
+    }
+    #[test]
+    fn test_merkle_tree_prove() {
+        const D: usize = 2; // Define the constant D
+        type C = PoseidonGoldilocksConfig; // Define the configuration type
+        type F = <C as GenericConfig<D>>::F; // Define the field type
+
+        let log_n = 8; // Define the logarithm base 2 of the number of leaves
+        let n = 1 << log_n; // Calculate the number of leaves (2^log_n)
+        let leaves0 = random_data::<F>(n, 7); // Generate random data for the leaves
+        let leaves = leaves0.clone(); // Clone the leaves for later use
+        let tree = MerkleTree::<F, <C as GenericConfig<D>>::Hasher>::new(leaves0, 1); // Create a new Merkle tree with the leaves and a cap height of 1
+
+        // Iterate over the leaves and their indices
+        for (i, leaf) in leaves.into_iter().enumerate() {
+            let proof = tree.prove(i); // Generate a Merkle proof for the current leaf
+            let re = verify_merkle_proof_to_cap(leaf, i, &tree.cap, &proof); // Verify the Merkle proof against the tree's cap
+            assert!(re.is_ok()); // Assert that the verification is successful
+        }
     }
 }
