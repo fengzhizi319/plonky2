@@ -104,27 +104,33 @@ pub(crate) fn fill_subtree<F: RichField, H: Hasher<F>>(
     digests_buf: &mut [MaybeUninit<H::Hash>],
     leaves: &[Vec<F>],
 ) -> H::Hash {
+    // 确保叶子节点的数量等于哈希值缓冲区长度的一半加一
     assert_eq!(leaves.len(), digests_buf.len() / 2 + 1);
+
+    // 如果哈希值缓冲区为空，则返回第一个叶子节点的哈希值
     if digests_buf.is_empty() {
         H::hash_or_noop(&leaves[0])
     } else {
-        // Layout is: left recursive output || left child digest
-        //             || right child digest || right recursive output.
-        // Split `digests_buf` into the two recursive outputs (slices) and two child digests
-        // (references).
+        // 布局为：左递归输出 || 左子节点哈希值 || 右子节点哈希值 || 右递归输出
+        // 将 `digests_buf` 分割为两个递归输出（切片）和两个子节点哈希值（引用）
         let (left_digests_buf, right_digests_buf) = digests_buf.split_at_mut(digests_buf.len() / 2);
         let (left_digest_mem, left_digests_buf) = left_digests_buf.split_last_mut().unwrap();
         let (right_digest_mem, right_digests_buf) = right_digests_buf.split_first_mut().unwrap();
-        // Split `leaves` between both children.
+
+        // 将 `leaves` 分割为左右子树
         let (left_leaves, right_leaves) = leaves.split_at(leaves.len() / 2);
 
+        // 并行计算左右子树的哈希值
         let (left_digest, right_digest) = plonky2_maybe_rayon::join(
             || fill_subtree::<F, H>(left_digests_buf, left_leaves),
             || fill_subtree::<F, H>(right_digests_buf, right_leaves),
         );
 
+        // 将计算出的左右子树哈希值写入缓冲区
         left_digest_mem.write(left_digest);
         right_digest_mem.write(right_digest);
+
+        // 返回左右子树哈希值的组合哈希值
         H::two_to_one(left_digest, right_digest)
     }
 }
