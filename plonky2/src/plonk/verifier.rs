@@ -19,6 +19,7 @@ pub(crate) fn verify<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, c
     verifier_data: &VerifierOnlyCircuitData<C, D>,
     common_data: &CommonCircuitData<F, D>,
 ) -> Result<()> {
+    //检查常规参数是否正确
     validate_proof_with_pis_shape(&proof_with_pis, common_data)?;
 
     let public_inputs_hash = proof_with_pis.get_public_inputs_hash();
@@ -49,6 +50,10 @@ pub(crate) fn verify_with_challenges<
     common_data: &CommonCircuitData<F, D>,
 ) -> Result<()> {
     let local_constants = &proof.openings.constants;
+    // println!("local_constants[0]:{:?}", local_constants[0]);
+    // println!("local_constants[1]:{:?}", local_constants[1]);
+    // println!("local_constants[2]:{:?}", local_constants[2]);
+    // println!("local_constants[3]:{:?}", local_constants[3]);
     let local_wires = &proof.openings.wires;
     let vars = EvaluationVars {
         local_constants,

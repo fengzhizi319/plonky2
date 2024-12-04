@@ -141,7 +141,15 @@ pub trait Gate<F: RichField + Extendable<D>, const D: usize>: 'static + Send + S
         builder: &mut CircuitBuilder<F, D>,
         vars: EvaluationTargets<D>,
     ) -> Vec<ExtensionTarget<D>>;
-
+    /*
+        eval_filtered 函数的主要功能是评估自定义门的约束，并根据提供的行和选择器索引应用过滤器，确保只考虑相关的约束。具体步骤如下：
+        计算过滤器：根据行、组范围和选择器索引计算过滤器。
+        移除前缀：从评估变量中移除选择器和查找选择器的前缀。
+        评估未过滤的约束：使用 eval_unfiltered 方法评估未过滤的约束。
+        应用过滤器：将每个约束乘以��算出的过滤器。
+        返回结果：返回过滤后的约束向量。
+        这个函数确保只考虑特定门和行的相关约束，对于证明系统中门的正确评估至关重要。
+     */
     fn eval_filtered(
         &self,
         mut vars: EvaluationVars<F, D>,
@@ -391,6 +399,15 @@ pub struct PrefixedGate<F: RichField + Extendable<D>, const D: usize> {
 }
 
 /// (0-s)*(1-s)*(2-s)*...*(x-s)*...*(t-1-s)其中x不等于row；因此x等于row时不等于0，其他group_range值为0
+/*
+    compute_filter 函数的主要功能是计算一个过滤器，该过滤器用于在评估自定义门的约束时，确保只考虑特定行和选择器索引的相关约束。具体算法步骤如下：
+    断言检查：确保 group_range 包含 row。
+    过滤行：从 group_range 中过滤掉等于 row 的元素。
+    添加未使用选择器：如果 many_selector 为真，则添加 UNUSED_SELECTOR。
+    计算差值：将每个元素转换为类型 K 并减去 s。
+    计算乘积：计算所有差值的乘积，得到最终的过滤器。
+    这个函数确保在评估约束时，只考虑特定行和选择器索引的相关约束。
+ */
 fn compute_filter<K: Field>(row: usize, group_range: Range<usize>, s: K, many_selector: bool) -> K {
     // 断言 group_range 包含 row
     debug_assert!(group_range.contains(&row));
@@ -409,7 +426,15 @@ fn compute_filter<K: Field>(row: usize, group_range: Range<usize>, s: K, many_se
         .product()
 
 }
-
+/*
+    compute_filter_circuit 函数的主要功能是计算一个过滤器电路，该过滤器用于在评估自定义门的约束时，确保只考虑特定行和选择器索引的相关约束。具体算法步骤如��：
+    断言检查：确保 group_range 包含 row。
+    过滤行：从 group_range 中过滤掉等于 row 的元素。
+    添加未使用选择器：如果 many_selectors 为真，则添加 UNUSED_SELECTOR。
+    计算差值：将每个元素转换为类型 F::Extension 并减去 s。
+    计算乘积：计算所有差值的乘积，得到最终的过滤器电路。
+    这个函数确保在评估约束时，只考虑特定行和选择器索引的相关约束。
+ */
 fn compute_filter_circuit<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     row: usize,
