@@ -67,6 +67,7 @@ pub(crate) type FriCommitedTrees<F, C, const D: usize> = (
     PolynomialCoeffs<<F as Extendable<D>>::Extension>,
 );
 
+///求掉额外低度扩展的多项式0系数，根据reduction_arity_bits生成一颗新树
 fn fri_committed_trees<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>(
     mut coeffs: PolynomialCoeffs<F::Extension>,
     mut values: PolynomialValues<F::Extension>,
@@ -191,6 +192,7 @@ pub(crate) fn fri_proof_of_work<
     pow_witness
 }
 
+///生成fri_params.config.num_query_rounds个挑战值，并根据挑战值生成各种merkle树的证明
 fn fri_prover_query_rounds<
     F: RichField + Extendable<D>,
     C: GenericConfig<D, F = F>,

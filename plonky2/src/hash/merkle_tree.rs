@@ -45,36 +45,39 @@ impl<F: RichField, H: Hasher<F>> MerkleCap<F, H> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 /// MerkleTree 结构体，用于表示 Merkle 树。
 pub struct MerkleTree<F: RichField, H: Hasher<F>> {
-    /// Merkle 树叶子节点的数据。
+    /// Merkle 树叶子节点的数据，每个节点元素是一个vec。
     pub leaves: Vec<Vec<F>>,
 
-    /// 树中的哈希值。由 `cap.len()` 个子树组成，每个子树对应 `cap` 中的一个元素。
-    /// 每个子树是连续存储的，位于 `digests[digests.len() / cap.len() * i..digests.len() / cap.len() * (i + 1)]`。
-    /// 在每个子树中，兄弟节点是相邻存储的。布局为：
-    /// 左子树 || 左子节点哈希值 || 右子节点哈希值 || 右子树，
-    /// 其中左子节点哈希值和右子节点哈希值是 H::Hash 类型，左子树和右子树是递归的。
-    /// 注意，节点的哈希值是由其父节点存储的。因此，根节点的哈希值不存储在这里（可以在 `cap` 中找到）。
-    pub digests: Vec<H::Hash>,
-
-    /// Merkle 树的顶层节点（Merkle cap）。
     /*
-    在 MerkleTree 结构体中，cap 表示的是 Merkle 树的顶层节点（Merkle cap）。
-    Merkle cap 是 Merkle 树中从根节点开始的第 h 层。它可以用来代替根节点来验证 Merkle 路径，
-    这样路径会比原来短 h 个元素。  具体来说，cap 包含了树中某一高度的节点的哈希值，这些哈希值
-    可以用于验证较短的 Merkle 路径。这样做的好处是可以减少验证路径的长度，从而提高验证效率。
-     以下是一个简单的例子来说明 cap 的作用：  假设我们有一个包含 8 个叶子节点的 Merkle 树，
-     树的高度为 3（从根节点到叶子节点的层数）。如果我们设置 cap_height 为 1，那么 cap 将包
-     含树中第 1 层的节点的哈希值。
+                 Root
+            /      \
+           A         B
+          / \        / \
+        C     D    E   F
+       / \   / \   / \  / \
+      h0 h1 h2 h3 h4 h5 h6 h7
+      |  |  |  |  |  |  |  |
+      L0 L1 L2 L3 L4 L5 L6 L7
+     最后一层是leave，中间是digests，最上面是cap，cap长度是cap_len,如cap_len=1，那么A，B属于第一层，
+     这一层的摘要就要保存在cap中。C、D、E、F、h1 、h2、 h3、 h4 、h5、 h6、 h7、h8这8+4个点就属于digests。
+     cap的目的是我们可以使用这些哈希值来验证从叶子节点到节点 A 或 B 的路径，而不需要一直验证到根节点。
+     这将减少验证路径的长度，从而提高验证效率。root不算在层数统计中。
+     每个叶子节点会先算一个hash，每个叶子节点可能是vec或者其他的比较大的结构，因此要先进行hash。
+     digest标号如下：
              Root
            /      \
-          A         B
+          cap[0]  cap[1]
          / \        / \
-       C     D    E   F
+       2     3     2   3
       / \   / \   / \  / \
-     L1 L2 L3 L4 L5 L6 L7 L8
-     在这个例子中，cap 将包含节点 A 和 B 的哈希值。我们可以使用这些哈希值来验证从叶子节点到
-     节点 A 或 B 的路径，而不需要一直验证到根节点。这将减少验证路径的长度，从而提高验证效率
-     */
+     0   1 4   5 0   1 4  5
+     |  |  |  |  |  |  |  |
+     L0 L1 L2 L3 L4 L5 L6 L7
+    */
+    ///除掉顶层结点的中间节点
+    pub digests: Vec<H::Hash>,
+
+    /// Merkle 树的顶层节点（Merkle cap）
     pub cap: MerkleCap<F, H>,
 }
 
