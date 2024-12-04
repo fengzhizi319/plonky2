@@ -25,7 +25,8 @@ where
     );
     Ok(())
 }
-
+///此函数的主要作用是验证给定的证明（proof）的形状是否符合预期的电路数据（common_data）
+/// 具体来说，它检查了证明中的各个部分（如电线、部分积、商多项式等）的数量和高度是否与电路数据中的配置相匹配。通过这些检查，确保证明的结构和电路数据的一致性。
 fn validate_proof_shape<F, C, const D: usize>(
     proof: &Proof<F, C, D>,
     common_data: &CommonCircuitData<F, D>,

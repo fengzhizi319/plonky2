@@ -66,8 +66,18 @@ pub fn verify_merkle_proof_to_cap<F: RichField, H: Hasher<F>>(
     )
 }
 
-/// Verifies that the given leaf data is present at the given index in the Field Merkle tree with the
-/// given cap.
+/// 验证给定的叶子数据是否存在于具有给定cap的Field Merkle树中的指定索引处。
+/// 具体来说，它通过验证每个兄弟子树的哈希值，逐层计算并验证最终的Merkle根哈希值。
+///
+/// # 参数
+/// - `leaf_data`: 叶子数据的向量，每个元素是一个向量，表示一个叶子节点的数据。
+/// - `leaf_heights`: 叶子高度的向量，每个元素表示对应叶子节点的高度。
+/// - `leaf_index`: 叶子节点的索引。
+/// - `merkle_cap`: Merkle树的cap，包含根哈希值。
+/// - `proof`: Merkle证明，包含每层的兄弟子树哈希值。
+///
+/// # 返回值
+/// 如果验证成功，返回Ok，否则返回错误信息。
 pub fn verify_batch_merkle_proof_to_cap<F: RichField, H: Hasher<F>>(
     leaf_data: &[Vec<F>],
     leaf_heights: &[usize],
@@ -75,13 +85,21 @@ pub fn verify_batch_merkle_proof_to_cap<F: RichField, H: Hasher<F>>(
     merkle_cap: &MerkleCap<F, H>,
     proof: &MerkleProof<F, H>,
 ) -> Result<()> {
+    // 确保叶子数据和叶子高度的长度相等
     assert_eq!(leaf_data.len(), leaf_heights.len());
+
+    // 初始化当前哈希值为第一个叶子数据的哈希值
     let mut current_digest = H::hash_or_noop(&leaf_data[0]);
     let mut current_height = leaf_heights[0];
     let mut leaf_data_index = 1;
+
+    // 遍历每个兄弟子树的哈希值
     for &sibling_digest in &proof.siblings {
+        // 计算当前索引的最低位
         let bit = leaf_index & 1;
         leaf_index >>= 1;
+
+        // 根据当前索引的最低位，计算当前哈希值
         current_digest = if bit == 1 {
             H::two_to_one(sibling_digest, current_digest)
         } else {
@@ -89,6 +107,7 @@ pub fn verify_batch_merkle_proof_to_cap<F: RichField, H: Hasher<F>>(
         };
         current_height -= 1;
 
+        // 如果当前高度等于下一个叶子数据的高度，更新当前哈希值
         if leaf_data_index < leaf_heights.len() && current_height == leaf_heights[leaf_data_index] {
             let mut new_leaves = current_digest.to_vec();
             new_leaves.extend_from_slice(&leaf_data[leaf_data_index]);
@@ -96,7 +115,11 @@ pub fn verify_batch_merkle_proof_to_cap<F: RichField, H: Hasher<F>>(
             leaf_data_index += 1;
         }
     }
+
+    // 确保所有叶子数据都已处理
     assert_eq!(leaf_data_index, leaf_data.len());
+
+    // 验证最终的哈希值是否等于Merkle cap中的哈希值
     ensure!(
         current_digest == merkle_cap.0[leaf_index],
         "Invalid Merkle proof."

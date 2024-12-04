@@ -46,6 +46,7 @@ fn main() -> Result<()> {
         "100th Fibonacci number mod |F| (starting with {}, {}) is: {}",
         proof.public_inputs[0], proof.public_inputs[1], proof.public_inputs[2]
     );
+    let t1=proof.clone().proof.openings.wires;
 
     data.verify(proof)
 }

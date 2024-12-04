@@ -47,6 +47,21 @@ pub(crate) fn get_lut_poly<F: RichField + Extendable<D>, const D: usize>(
 /// Evaluate the vanishing polynomial at `x`. In this context, the vanishing polynomial is a random
 /// linear combination of gate constraints, plus some other terms relating to the permutation
 /// argument. All such terms should vanish on `H`.
+/// 评估消退多项式。在此上下文中，消退多项式是门约束的随机线性组合，加上一些与置换参数相关的其他项。
+/// 所有这些项在 `H` 上应该消失。
+ /*
+    该函数 eval_vanishing_poly 用于评估消退多项式。消失多项式在特定点上应该为零，用于验证电路的正确性。函数通过计算多个约束项的线性组合来实现这一点。具体步骤如下：
+    初始化：检查是否有查找约束，获取最大度数和部分积的数量。
+    评估门约束：调用 evaluate_gate_constraints 函数评估所有门约束。
+    初始化消退项：初始化消退项的向量，包括 L_0(x) (Z(x) - 1) 项、查找约束项和部分积约束项。
+    计算 L_0(x)：计算 L_0(x)，这是一个特定的多项式评估。
+    遍历挑战：对于每个挑战，计算相应的消失项：
+    计算 L_0(x) (Z(x) - 1) 项。
+    如果有查找约束，计算查找约束项。
+    计算部分积约束项。
+    合并消退项：将所有消失项合并成一个向量。
+    线性组合：使用 alphas 对消退项进行线性组合，得到最终的消退多项式评估值。
+  */
 pub(crate) fn eval_vanishing_poly<F: RichField + Extendable<D>, const D: usize>(
     common_data: &CommonCircuitData<F, D>,
     x: F::Extension,
@@ -62,19 +77,21 @@ pub(crate) fn eval_vanishing_poly<F: RichField + Extendable<D>, const D: usize>(
     alphas: &[F],
     deltas: &[F],
 ) -> Vec<F::Extension> {
+    // 检查是否有查找约束
     let has_lookup = common_data.num_lookup_polys != 0;
+    // 获取最大度数和部分积的数量，max_degree=8,num_prods=9
     let max_degree = common_data.quotient_degree_factor;
     let num_prods = common_data.num_partial_products;
 
+    // 评估所有门约束
     let constraint_terms = evaluate_gate_constraints::<F, D>(common_data, vars);
 
+    // 获取查找选择器
     let lookup_selectors = &vars.local_constants[common_data.selectors_info.num_selectors()
         ..common_data.selectors_info.num_selectors() + common_data.num_lookup_selectors];
 
-    // The L_0(x) (Z(x) - 1) vanishing terms.
+    // 初始化消失项的向量
     let mut vanishing_z_1_terms = Vec::new();
-
-    // The terms checking the lookup constraints, if any.
     let mut vanishing_all_lookup_terms = if has_lookup {
         let num_sldc_polys = common_data.num_lookup_polys - 1;
         Vec::with_capacity(
@@ -83,17 +100,19 @@ pub(crate) fn eval_vanishing_poly<F: RichField + Extendable<D>, const D: usize>(
     } else {
         Vec::new()
     };
-
-    // The terms checking the partial products.
     let mut vanishing_partial_products_terms = Vec::new();
 
+    // 计算 L_0(x)
     let l_0_x = plonk_common::eval_l_0(common_data.degree(), x);
 
+    // 遍历每个挑战
     for i in 0..common_data.config.num_challenges {
         let z_x = local_zs[i];
         let z_gx = next_zs[i];
+        // 计算 L_0(x) (Z(x) - 1) 项
         vanishing_z_1_terms.push(l_0_x * (z_x - F::Extension::ONE));
 
+        // 如果有查找约束，计算查找约束项
         if has_lookup {
             let cur_local_lookup_zs = &local_lookup_zs
                 [common_data.num_lookup_polys * i..common_data.num_lookup_polys * (i + 1)];
@@ -114,6 +133,7 @@ pub(crate) fn eval_vanishing_poly<F: RichField + Extendable<D>, const D: usize>(
             vanishing_all_lookup_terms.extend(lookup_constraints);
         }
 
+        // 计算部分积约束项
         let numerator_values = (0..common_data.config.num_routed_wires)
             .map(|j| {
                 let wire_value = vars.local_wires[j];
@@ -130,9 +150,9 @@ pub(crate) fn eval_vanishing_poly<F: RichField + Extendable<D>, const D: usize>(
             })
             .collect::<Vec<_>>();
 
-        // The partial products considered for this iteration of `i`.
+        // 当前挑战的部分积
         let current_partial_products = &partial_products[i * num_prods..(i + 1) * num_prods];
-        // Check the quotient partial products.
+        // 检查商多项式的部分积
         let partial_product_checks = check_partial_products(
             &numerator_values,
             &denominator_values,
@@ -144,6 +164,7 @@ pub(crate) fn eval_vanishing_poly<F: RichField + Extendable<D>, const D: usize>(
         vanishing_partial_products_terms.extend(partial_product_checks);
     }
 
+    // 合并所有消失项
     let vanishing_terms = [
         vanishing_z_1_terms,
         vanishing_partial_products_terms,
@@ -152,6 +173,7 @@ pub(crate) fn eval_vanishing_poly<F: RichField + Extendable<D>, const D: usize>(
     ]
         .concat();
 
+    // 使用 alphas 对消失项进行线性组合
     let alphas = &alphas.iter().map(|&a| a.into()).collect::<Vec<_>>();
     plonk_common::reduce_with_powers_multi(&vanishing_terms, alphas)
 }
@@ -702,10 +724,14 @@ pub fn evaluate_gate_constraints<F: RichField + Extendable<D>, const D: usize>(
                 i < common_data.num_gate_constraints,
                 "num_constraints() gave too low of a number"
             );
+            //println!("c:{:?},constraints[{}],{:?}",c,i,constraints[i]);
             constraints[i] += c;
+            println!("after:constraints[{}],{:?}",i,constraints[i]);
         }
     }
+    println!("constraints:{:?}",constraints);
     constraints
+
 }
 
 /// Evaluate all gate constraints in the base field.
