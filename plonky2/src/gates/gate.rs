@@ -453,3 +453,23 @@ fn compute_filter_circuit<F: RichField + Extendable<D>, const D: usize>(
         .collect::<Vec<_>>();
     builder.mul_many_extension(v)
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::field::goldilocks_field::GoldilocksField;
+
+    #[test]
+    fn test_compute_filter() {
+        let row = 1;
+        let group_range = 0..4;
+
+        let many_selector = true;
+        for s0 in 0..6 {
+            let s = GoldilocksField::from_canonical_usize(s0);
+            let result = compute_filter(row, group_range.clone(), s, many_selector);
+            println!("result[{}]={:?}",s0,result);
+        }
+
+    }
+
+}

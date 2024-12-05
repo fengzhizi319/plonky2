@@ -253,4 +253,17 @@ mod tests {
     fn field_vec<F: Field>(xs: &[usize]) -> Vec<F> {
         xs.iter().map(|&x| F::from_canonical_usize(x)).collect()
     }
+    #[test]
+    fn test_check_partial_products() {
+        type F = GoldilocksField;
+        let numerators = field_vec(&[1, 2, 3, 4, 5, 6]);
+        let denominators = vec![F::ONE; 6];
+        let z_x = F::ONE;
+        let z_gx = F::from_canonical_u64(720);
+        let partials = field_vec(&[2, 24]);
+
+        let result = check_partial_products(&numerators, &denominators, &partials, z_x, z_gx, 2);
+        assert!(result.iter().all(|x| x.is_zero()));
+    }
+
 }

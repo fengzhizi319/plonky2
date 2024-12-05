@@ -90,7 +90,7 @@ pub(crate) fn eval_vanishing_poly<F: RichField + Extendable<D>, const D: usize>(
     let lookup_selectors = &vars.local_constants[common_data.selectors_info.num_selectors()
         ..common_data.selectors_info.num_selectors() + common_data.num_lookup_selectors];
 
-    // 初始化消失项的向量
+    // 初始化消退项的向量
     let mut vanishing_z_1_terms = Vec::new();
     let mut vanishing_all_lookup_terms = if has_lookup {
         let num_sldc_polys = common_data.num_lookup_polys - 1;
@@ -709,7 +709,20 @@ pub fn evaluate_gate_constraints<F: RichField + Extendable<D>, const D: usize>(
     vars: EvaluationVars<F, D>,
 ) -> Vec<F::Extension> {
     let mut constraints = vec![F::Extension::ZERO; common_data.num_gate_constraints];
+    /*
+    common_data.gates:ConstantGate { num_consts: 2 }
+    common_data.gates:PublicInputGate
+    common_data.gates:ArithmeticGate { num_ops: 20 }
+    common_data.gates:PoseidonGate(PhantomData<plonky2_field::goldilocks_field::GoldilocksField>)<WIDTH=12>
+    common_data.selectors_info.selector_indices:[0, 0, 0, 1]
+    common_data.selectors_info.num_selectors():2
+     */
+    println!("common_data.selectors_info.selector_indices:{:?}",common_data.selectors_info.selector_indices);
+    println!("common_data.selectors_info.num_selectors():{:?}",common_data.selectors_info.num_selectors());
+
+
     for (i, gate) in common_data.gates.iter().enumerate() {
+        println!("i：{}，num_selectors:{:?}",i,common_data.selectors_info.selector_indices[i]);
         let selector_index = common_data.selectors_info.selector_indices[i];
         let gate_constraints = gate.0.eval_filtered(
             vars,
