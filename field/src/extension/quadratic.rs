@@ -206,7 +206,8 @@ impl<F: Extendable<2>> Square for QuadraticExtension<F> {
         // and one add to one mul and a shift
 
         let Self([a0, a1]) = *self;
-
+        //let  t1=<Self as OEF<2>>::W;
+        //let c0 = a0.square() + t1 * a1.square();
         let c0 = a0.square() + <Self as OEF<2>>::W * a1.square();
         let c1 = a0 * a1.double();
 

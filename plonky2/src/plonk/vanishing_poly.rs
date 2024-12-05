@@ -726,10 +726,10 @@ pub fn evaluate_gate_constraints<F: RichField + Extendable<D>, const D: usize>(
             );
             //println!("c:{:?},constraints[{}],{:?}",c,i,constraints[i]);
             constraints[i] += c;
-            println!("after:constraints[{}],{:?}",i,constraints[i]);
+            //println!("after:constraints[{}],{:?}",i,constraints[i]);
         }
     }
-    println!("constraints:{:?}",constraints);
+    //println!("constraints:{:?}",constraints);
     constraints
 
 }

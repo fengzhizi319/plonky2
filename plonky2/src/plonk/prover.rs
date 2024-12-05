@@ -664,6 +664,7 @@ fn compute_quotient_polys<
     let num_challenges = common_data.config.num_challenges; // 挑战次数2
 
     let has_lookup = common_data.num_lookup_polys != 0; // 是否有查找表false
+    //println!("has_lookup:{:?}",F::g);
 
     let quotient_degree_bits = log2_ceil(common_data.quotient_degree_factor); // 商多项式的度数位数3
     assert!(
