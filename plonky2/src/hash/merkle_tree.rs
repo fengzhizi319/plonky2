@@ -416,6 +416,9 @@ pub(crate) mod tests {
         const D: usize = 2; // Define the constant D
         type C = PoseidonGoldilocksConfig; // Define the configuration type
         type F = <C as GenericConfig<D>>::F; // Define the field type
+        let mut t1=vec![12,3,45];
+        println!("t1:{:?}",t1);
+        t1[2]=100;
 
         let log_n = 8; // Define the logarithm base 2 of the number of leaves
         let n = 1 << log_n; // Calculate the number of leaves (2^log_n)

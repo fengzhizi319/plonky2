@@ -96,6 +96,8 @@ pub(crate) fn eval_l_0_circuit<F: RichField + Extendable<D>, const D: usize>(
 
 /// For each alpha in alphas, compute a reduction of the given terms using powers of alpha. T can
 /// be any type convertible to a double-ended iterator.
+/// 对于每个 alpha，在 alphas 中，使用 alpha 的幂来计算给定项的归约。T 可以是任何类型，
+/// 该类型可以转换为双端迭代器。
 pub(crate) fn reduce_with_powers_multi<
     'a,
     F: Field,
@@ -105,25 +107,21 @@ pub(crate) fn reduce_with_powers_multi<
     terms: T,
     alphas: &[F],
 ) -> Vec<F> {
+    // 初始化一个向量 cumul，长度与 alphas 相同，所有元素初始化为 F::ZERO。
     let mut cumul = vec![F::ZERO; alphas.len()];
-    /*
+
+    // 将 terms 转换为双端迭代器并反转顺序。
     for &term in terms.into_iter().rev() {
+        // 遍历 cumul 的可变迭代器和 alphas 的迭代器。
         cumul
             .iter_mut()
             .zip(alphas)
-            .for_each(|(c, &alpha)| *c = term.multiply_accumulate(*c, alpha));
+            .for_each(|(c, &alpha)| {
+                // 对每个 c，使用 term 和 alpha 进行 multiply_accumulate 操作。
+                *c = term.multiply_accumulate(*c, alpha);
+            });
     }
-    cumul
-
-     */
-    let  reversed_terms = terms.into_iter().rev();
-    for &term in reversed_terms {
-        let mut cumul_iter = cumul.iter_mut();
-        let  alphas_iter = alphas.iter();
-        cumul_iter.zip(alphas_iter).for_each(|(c, &alpha)| {
-            *c = term.multiply_accumulate(*c, alpha);
-        });
-    }
+    // 返回计算结果 cumul。
     cumul
 }
 

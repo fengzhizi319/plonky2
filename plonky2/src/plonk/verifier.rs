@@ -86,15 +86,26 @@ pub(crate) fn verify_with_challenges<
 
     // Check each polynomial identity, of the form `vanishing(x) = Z_H(x) quotient(x)`, at zeta.
     let quotient_polys_zeta = &proof.openings.quotient_polys;
+    //zeta^n
     let zeta_pow_deg = challenges
         .plonk_zeta
         .exp_power_of_2(common_data.degree_bits());
+    //Z_H(x)=x^n-1=zeta^n-1
     let z_h_zeta = zeta_pow_deg - F::Extension::ONE;
     // `quotient_polys_zeta` holds `num_challenges * quotient_degree_factor` evaluations.
     // Each chunk of `quotient_degree_factor` holds the evaluations of `t_0(zeta),...,t_{quotient_degree_factor-1}(zeta)`
     // where the "real" quotient polynomial is `t(X) = t_0(X) + t_1(X)*X^n + t_2(X)*X^{2n} + ...`.
     // So to reconstruct `t(zeta)` we can compute `reduce_with_powers(chunk, zeta^n)` for each
     // `quotient_degree_factor`-sized chunk of the original evaluations.
+    /*
+    z_h_zeta 的作用是计算在挑战点 zeta 处的零化多项式 Z_H(zeta) 的值。零化多项式 Z_H(x) 是一个在特定点（通常是多项式的根）为零的多项式。
+    在这个上下文中，z_h_zeta 用于验证多项式恒等式 vanishing(x) = Z_H(x) * quotient(x) 是否在 zeta 处成立。  算法原理如下：
+    计算 zeta 的幂次：zeta_pow_deg 计算 zeta 的幂次，Z_H(x)=x^n-1=zeta^n-1,幂次为多项式的度数。
+    计算零化多项式 Z_H(zeta)：z_h_zeta 通过计算 zeta_pow_deg - F::Extension::ONE 得到 Z_H(zeta) 的值。这里的 F::Extension::ONE 表示域中的单位元。
+    验证多项式恒等式：在 zeta 处验证多项式恒等式 vanishing(x) = Z_H(x) * quotient(x) 是否成立。通过计算 vanishing_polys_zeta[i]
+    是否等于 z_h_zeta * reduce_with_powers(chunk, zeta_pow_deg) 来进行验证。
+    这个过程确保了在挑战点 zeta 处，多项式恒等式是成立的，从而验证了证明的正确性
+     */
     for (i, chunk) in quotient_polys_zeta
         .chunks(common_data.quotient_degree_factor)
         .enumerate()

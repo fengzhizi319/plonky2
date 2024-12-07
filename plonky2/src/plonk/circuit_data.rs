@@ -549,6 +549,7 @@ impl<F: RichField + Extendable<D>, const D: usize> CommonCircuitData<F, D> {
             ..self.num_zs_partial_products_polys() + i * self.num_lookup_polys + 2
     }
 
+    ///获取z(zeta),z(g*zeta)的打开点以及多项式信息
     pub(crate) fn get_fri_instance(&self, zeta: F::Extension) -> FriInstanceInfo<F, D> {
         // All polynomials are opened at zeta.
         let zeta_batch = FriBatchInfo {
@@ -571,7 +572,16 @@ impl<F: RichField + Extendable<D>, const D: usize> CommonCircuitData<F, D> {
             batches: openings,
         }
     }
-
+    /*
+    get_fri_instance 和 get_fri_instance_target 的主要区别在于它们的用途和参数类型：
+    用途：
+    get_fri_instance 用于在非递归环境中获取 FRI 实例信息。
+    get_fri_instance_target 用于在递归电路中获取 FRI 实例信息。
+    参数类型：
+    get_fri_instance 接受一个普通的 zeta 参数，其类型为 F::Extension。
+    get_fri_instance_target 接受一个 zeta 参数，其类型为 ExtensionTarget<D>，这是在递归电路中使用的目标类型。
+    这两个函数的实现逻辑基本相同，都是生成 FRI 实例信息，但 get_fri_instance_target 适用于递归电路中的目标类型
+     */
     pub(crate) fn get_fri_instance_target(
         &self,
         builder: &mut CircuitBuilder<F, D>,

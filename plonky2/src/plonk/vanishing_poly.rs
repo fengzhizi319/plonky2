@@ -353,6 +353,7 @@ pub(crate) fn eval_vanishing_poly_base_batch<F: RichField + Extendable<D>, const
             .chain(vanishing_partial_products_terms.iter())
             .chain(vanishing_all_lookup_terms.iter())
             .chain(constraint_terms);
+        //使用alphas来折叠消退项
         let res = plonk_common::reduce_with_powers_multi(vanishing_terms, alphas);
         //println!("res: {:?}",res);
         res_batch.push(res);
