@@ -97,6 +97,7 @@ pub(crate) fn verify_with_challenges<
     // where the "real" quotient polynomial is `t(X) = t_0(X) + t_1(X)*X^n + t_2(X)*X^{2n} + ...`.
     // So to reconstruct `t(zeta)` we can compute `reduce_with_powers(chunk, zeta^n)` for each
     // `quotient_degree_factor`-sized chunk of the original evaluations.
+
     /*
     z_h_zeta 的作用是计算在挑战点 zeta 处的零化多项式 Z_H(zeta) 的值。零化多项式 Z_H(x) 是一个在特定点（通常是多项式的根）为零的多项式。
     在这个上下文中，z_h_zeta 用于验证多项式恒等式 vanishing(x) = Z_H(x) * quotient(x) 是否在 zeta 处成立。  算法原理如下：
