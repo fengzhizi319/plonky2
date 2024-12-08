@@ -111,7 +111,10 @@ pub(crate) fn verify_with_challenges<
         .chunks(common_data.quotient_degree_factor)
         .enumerate()
     {
-        ensure!(vanishing_polys_zeta[i] == z_h_zeta * reduce_with_powers(chunk, zeta_pow_deg));
+
+        let z_h_zeta_clone = z_h_zeta.clone();
+        ensure!(vanishing_polys_zeta[i] == z_h_zeta_clone * reduce_with_powers(chunk, zeta_pow_deg));
+        //ensure!(vanishing_polys_zeta[i] == z_h_zeta * reduce_with_powers(chunk, zeta_pow_deg));
     }
 
     let merkle_caps = &[

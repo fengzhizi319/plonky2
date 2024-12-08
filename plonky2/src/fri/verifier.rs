@@ -50,11 +50,17 @@ pub(crate) fn fri_verify_proof_of_work<F: RichField + Extendable<D>, const D: us
     fri_pow_response: F,
     config: &FriConfig,
 ) -> Result<()> {
+    let leading_zeros_len=fri_pow_response.to_canonical_u64().leading_zeros();
     ensure!(
-        fri_pow_response.to_canonical_u64().leading_zeros()
+        leading_zeros_len
             >= config.proof_of_work_bits + (64 - F::order().bits()) as u32,
         "Invalid proof of work witness."
     );
+    // ensure!(
+    //     fri_pow_response.to_canonical_u64().leading_zeros()
+    //         >= config.proof_of_work_bits + (64 - F::order().bits()) as u32,
+    //     "Invalid proof of work witness."
+    // );
 
     Ok(())
 }
@@ -307,12 +313,28 @@ impl<F: RichField + Extendable<D>, const D: usize> PrecomputedReducedOpenings<F,
     /// 返回包含简化评估值的结构体`PrecomputedReducedOpenings`。
     pub(crate) fn from_os_and_alpha(openings: &FriOpenings<F, D>, alpha: F::Extension) -> Self {
         // 遍历每个批次的多项式评估值，并使用alpha进行简化
+        /*
         let reduced_openings_at_point = openings
             .batches
             .iter()
             .map(|batch| ReducingFactor::new(alpha).reduce(batch.values.iter()))
             .collect();
 
+         */
+        // Iterate over each batch in the openings
+        let reduced_openings_at_point = openings
+            .batches
+            .iter()
+            // For each batch, create a new ReducingFactor with the given alpha
+            .map(|batch| {
+                println!("batch:{:?}",batch.values[0]);
+                println!("batch len:{:?}",batch.values.len());
+                let mut reducing_factor = ReducingFactor::new(alpha);
+                // Reduce the values in the batch using the reducing factor
+                reducing_factor.reduce(batch.values.iter())
+            })
+            // Collect the reduced values into a vector
+            .collect();
         // 返回包含简化评估值的结构体
         Self {
             reduced_openings_at_point,

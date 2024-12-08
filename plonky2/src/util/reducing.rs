@@ -51,7 +51,11 @@ impl<F: Field> ReducingFactor<F> {
         self.count += 1;
         *p *= self.base;
     }
-
+///[ \text{result} = \sum_{i=0}^{n-1} \left( \alpha^i \cdot x_i \right) ]
+/// 其中：
+///( \alpha ) 是 ReducingFactor 的 base 值。
+///( x_i ) 是迭代器中的第 ( i ) 个元素。
+/// ( n ) 是迭代器的长度。
     pub fn reduce(&mut self, iter: impl DoubleEndedIterator<Item = impl Borrow<F>>) -> F {
         iter.rev()
             .fold(F::ZERO, |acc, x| self.mul(acc) + *x.borrow())
