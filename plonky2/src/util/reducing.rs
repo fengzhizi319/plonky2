@@ -51,7 +51,8 @@ impl<F: Field> ReducingFactor<F> {
         self.count += 1;
         *p *= self.base;
     }
-///[ \text{result} = \sum_{i=0}^{n-1} \left( \alpha^i \cdot x_i \right) ]
+///使用一个a来折叠所有的迭代器中的元素，如a^0 * f_0+a^1 * f_1+...+a^(n-1) * f_{n-1}，其中a具体为参数self.base，f_i是要折叠的多项式(值表示或者系数表示都可以)
+/// $$ \text{result} = \sum_{i=0}^{n-1} \left( \alpha^i \cdot x_i \right) $$
 /// 其中：
 ///( \alpha ) 是 ReducingFactor 的 base 值。
 ///( x_i ) 是迭代器中的第 ( i ) 个元素。
@@ -72,6 +73,18 @@ impl<F: Field> ReducingFactor<F> {
         iter.rev()
             .fold(P::ZEROS, |acc, x| self.mul_ext(acc) + *x.borrow())
     }
+    /*
+    reduce_polys 和 reduce_polys_base 的主要区别在于它们处理的多项式类型和使用的基数不同。
+    reduce_polys:
+    处理的是 PolynomialCoeffs<F> 类型的多项式。
+    使用 self.base 作为基数来进行多项式的折叠。
+    通过 self.mul_poly 方法来实现多项式的乘法和累加。
+    reduce_polys_base:
+    处理的是 PolynomialCoeffs<BF> 类型的多项式，其中 BF 是一个可以扩展的字段。
+    使用 self.base 作为基数，并生成该基数的幂来进行多项式的折叠。
+    通过 poly.borrow().mul_extension(base_power) 方法来实现多项式的乘法和累加。
+    总结来说，reduce_polys 直接处理 F 类型的多项式，而 reduce_polys_base 处理的是扩展字段 BF 类型的多项式，并且在折叠过程中使用了基数的幂。
+     */
 
     pub fn reduce_polys(
         &mut self,

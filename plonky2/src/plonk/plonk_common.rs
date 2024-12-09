@@ -96,8 +96,9 @@ pub(crate) fn eval_l_0_circuit<F: RichField + Extendable<D>, const D: usize>(
 
 /// For each alpha in alphas, compute a reduction of the given terms using powers of alpha. T can
 /// be any type convertible to a double-ended iterator.
-/// 对于每个 alpha，在 alphas 中，使用 alpha 的幂来计算给定项的归约。T 可以是任何类型，
+///alpha 进行折叠操作，将 terms 中的每个元素与 alpha的幂 相乘并累加。。T 可以是任何类型，
 /// 该类型可以转换为双端迭代器。
+///  $$c_i = \sum_{j=0}^{n-1} \text{term}_j \cdot \alpha_i^j$$
 pub(crate) fn reduce_with_powers_multi<
     'a,
     F: Field,
@@ -124,7 +125,8 @@ pub(crate) fn reduce_with_powers_multi<
     // 返回计算结果 cumul。
     cumul
 }
-
+///alpha 进行折叠操作，将 terms 中的每个元素与 alpha的幂 相乘并累加。
+///$$\text{sum} = \sum_{j=0}^{n-1} \text{term}_j \cdot \alpha^{n-1-j}$$
 pub fn reduce_with_powers<'a, P: PackedField, T: IntoIterator<Item = &'a P>>(
     terms: T,
     alpha: P::Scalar,
@@ -138,7 +140,8 @@ where
     }
     sum
 }
-
+///alpha 进行折叠操作，将 terms 中的每个元素与 alpha的幂 相乘并累加。
+///$$ \text{sum} = \sum_{j=0}^{n-1} \text{term}_j \cdot \alpha^{n-1-j} $$
 pub fn reduce_with_powers_circuit<F: RichField + Extendable<D>, const D: usize>(
     builder: &mut CircuitBuilder<F, D>,
     terms: &[Target],
