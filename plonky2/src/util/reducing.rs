@@ -118,12 +118,15 @@ impl<F: Field> ReducingFactor<F> {
             // Sum all the resulting polynomials
             .sum()
     }
-
+    ///该函数将输入值 (x) 乘以基数 (\text{base}) 的 (\text{count}) 次幂，并将 (\text{count}) 重置为 0
+    ///$$ \text{result} = \text{base}^{\text{count}} \cdot x $$
     pub fn shift(&mut self, x: F) -> F {
         let tmp = self.base.exp_u64(self.count) * x;
         self.count = 0;
         tmp
     }
+    ///该函数将输入的多项式系数 (p) 乘以基数 (\text{base}) 的 (\text{count}) 次幂，并将 (\text{count}) 重置为 0。
+    /// $$p = p \cdot \text{base}^{\text{count}}$$
 
     pub fn shift_poly(&mut self, p: &mut PolynomialCoeffs<F>) {
         *p *= self.base.exp_u64(self.count);
