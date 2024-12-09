@@ -50,10 +50,6 @@ pub(crate) fn verify_with_challenges<
     common_data: &CommonCircuitData<F, D>,
 ) -> Result<()> {
     let local_constants = &proof.openings.constants;
-    // println!("local_constants[0]:{:?}", local_constants[0]);
-    // println!("local_constants[1]:{:?}", local_constants[1]);
-    // println!("local_constants[2]:{:?}", local_constants[2]);
-    // println!("local_constants[3]:{:?}", local_constants[3]);
     let local_wires = &proof.openings.wires;
     let vars = EvaluationVars {
         local_constants,
@@ -124,7 +120,7 @@ pub(crate) fn verify_with_challenges<
         proof.plonk_zs_partial_products_cap,
         proof.quotient_polys_cap,
     ];
-
+    // 验证 FRI 证明
     verify_fri_proof::<F, C, D>(
         &common_data.get_fri_instance(challenges.plonk_zeta),
         &proof.openings.to_fri_openings(),
