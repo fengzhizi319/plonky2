@@ -252,17 +252,17 @@ fn fri_verifier_query_round<
 
     // 遍历每个步骤的评估值
     for (i, &arity_bits) in params.reduction_arity_bits.iter().enumerate() {
-        let arity = 1 << arity_bits;
-        let evals = &round_proof.steps[i].evals;
+        let arity = 1 << arity_bits; // 计算当前步骤的arity
+        let evals = &round_proof.steps[i].evals; // 获取当前步骤的评估值
 
-        // 将 x_index 拆分为余弦集的索引和余弦集内的索引。
+        // 将 x_index 拆分为陪集的索引和陪集内的索引
         let coset_index = x_index >> arity_bits;
         let x_index_within_coset = x_index & (arity - 1);
 
-        // 检查与前一轮的旧评估值的一致性。
+        // 检查与前一轮的旧评估值的一致性
         ensure!(evals[x_index_within_coset] == old_eval);
 
-        // 从 {P(x)}_{x^arity=y} 推断 P(y)。
+        // 从 {P(x)}_{x^arity=y} 推断 P(y)
         old_eval = compute_evaluation(
             subgroup_x,
             x_index_within_coset,
@@ -279,7 +279,7 @@ fn fri_verifier_query_round<
             &round_proof.steps[i].merkle_proof,
         )?;
 
-        // 更新点 x 到 x^arity。
+        // 更新点 x 到 x^arity
         subgroup_x = subgroup_x.exp_power_of_2(arity_bits);
 
         x_index = coset_index;
@@ -312,30 +312,13 @@ impl<F: RichField + Extendable<D>, const D: usize> PrecomputedReducedOpenings<F,
     /// # 返回值
     /// 返回包含简化评估值的结构体`PrecomputedReducedOpenings`。
     pub(crate) fn from_os_and_alpha(openings: &FriOpenings<F, D>, alpha: F::Extension) -> Self {
-        // 遍历每个批次的多项式评估值，并使用alpha进行简化
-        /*
+        // 遍历每个批次的多项式评估值，并使用alpha进行折叠
         let reduced_openings_at_point = openings
             .batches
             .iter()
             .map(|batch| ReducingFactor::new(alpha).reduce(batch.values.iter()))
             .collect();
 
-         */
-        // Iterate over each batch in the openings
-        let reduced_openings_at_point = openings
-            .batches
-            .iter()
-            // For each batch, create a new ReducingFactor with the given alpha
-            .map(|batch| {
-                println!("batch:{:?}",batch.values[0]);
-                println!("batch len:{:?}",batch.values.len());
-                let mut reducing_factor = ReducingFactor::new(alpha);
-                // Reduce the values in the batch using the reducing factor
-                reducing_factor.reduce(batch.values.iter())
-            })
-            // Collect the reduced values into a vector
-            .collect();
-        // 返回包含简化评估值的结构体
         Self {
             reduced_openings_at_point,
         }
